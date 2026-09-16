@@ -11,7 +11,13 @@ app_license = "mit"
 # frappe.ui.form.on() per-doctype from frappe.boot.digital_sign_config,
 # so it only does anything on the small set of doctypes actually
 # configured in Digital Sign Document Config.
-app_include_js = "public/js/digital_sign_button.js"
+#
+# NOTE: the source file MUST be named *.bundle.js - Frappe's esbuild
+# (since build.json was deprecated) only auto-discovers entry points by
+# that filename suffix, anywhere under public/. A plain .js file here is
+# silently invisible to the build - it compiles "successfully" having
+# bundled nothing, with no error at all.
+app_include_js = "public/js/digital_sign_button.bundle.js"
 
 # Push enabled-doctype config into frappe.boot once per session instead of
 # an API call on every form load.
