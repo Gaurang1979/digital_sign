@@ -14,10 +14,15 @@ Built and verified against: Hypersecu HYP2003 token, Capricorn DSC
 - **Digital Sign Settings** — one place to configure the token
   (PKCS#11 library path, token label, PIN, certificate ID) and choose
   what appears inside the visible stamp.
-- **Digital Sign Document Config** — enable signing per DocType, set
-  which roles may sign/revoke, which Print Format to render for
-  signing (recommended — otherwise falls back to the DocType's default,
-  which can silently change later), where the stamp goes, and its size.
+- **Digital Sign Document Config** — one row per signing template: a
+  DocType, the Print Format to render it with, which roles may sign
+  with it, the anchor text, and stamp size. A DocType can have more
+  than one row (e.g. a domestic vs. export Print Format for the same
+  DocType) - the sign dialog lets the user pick when more than one
+  applies to them. Saving a row automatically tests the anchor against
+  the most recently submitted document of that type and blocks the
+  save with a clear error if it isn't actually found - no more
+  discovering a bad anchor only when someone tries to sign.
 - **Digital Sign button** — a "Digital Sign" group button in the
   document toolbar for submitted documents, visible only to users
   holding an allowed role, with two actions: **Sign Document** and
@@ -47,9 +52,9 @@ stamp's bottom-left corner there, sized per the DocType's config. Since
 a Print Format is shared by every document of that type, one edit
 covers all of them.
 
-The sign dialog has a **Test anchor placement** link that reports
-whether the anchor was found and where, without signing — use it after
-any Print Format change.
+Signing itself is a simple confirmation - click **Digital Sign → Sign
+Document**, confirm, done. The anchor is verified up front when the
+template is saved (see above), not re-checked at sign time.
 
 ## Stamp content
 
@@ -134,15 +139,17 @@ sudo supervisorctl restart all
 
 2. **Print Format** — add the anchor span (above).
 
-3. **Digital Sign Document Config** — add a row per DocType, set
-   allowed roles, the Print Format to render for signing, anchor text,
-   and stamp width/height.
+3. **Digital Sign Document Config** — add a row per DocType (or per
+   DocType + Print Format if you need more than one template), set
+   allowed roles, the Print Format to render for signing, and anchor
+   text. Saving verifies the anchor is actually found - fix it here
+   before it ever reaches a real signature attempt.
 
-4. Open a submitted document, use **Digital Sign → Sign Document**,
-   test the anchor first if unsure, then check Print / Download PDF.
-   **Digital Sign → Revoke Sign** reverses it (keeps the old signed
-   copy on record, but the document goes back to unsigned and can be
-   signed again).
+4. Open a submitted document, use **Digital Sign → Sign Document**
+   (pick a template first if more than one applies), confirm, then
+   check Print / Download PDF. **Digital Sign → Revoke Sign** reverses
+   it (keeps the old signed copy on record, but the document goes back
+   to unsigned and can be signed again).
 
 ---
 

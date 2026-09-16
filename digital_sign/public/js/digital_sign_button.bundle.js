@@ -4,6 +4,10 @@
 // frappe.ui.form.on() handler for each doctype actually present in
 // frappe.boot.digital_sign_config - a small, known set - so it only does
 // anything on forms that are actually configured for signing.
+//
+// frappe.boot.digital_sign_config[doctype] is a LIST of templates (a
+// DocType can have more than one Digital Sign Document Config row, e.g.
+// different Print Formats for different scenarios).
 
 window.digital_sign = window.digital_sign || {};
 
@@ -23,27 +27,26 @@ digital_sign.setup_button = function (frm) {
 	if (frm.is_new()) return;
 
 	const all_config = frappe.boot.digital_sign_config || {};
-	const config = all_config[frm.doctype];
-	if (!config) return;
+	const templates = all_config[frm.doctype] || [];
+	if (!templates.length) return;
 
 	if (frm.doc.docstatus !== 1) return; // only submitted documents
 
 	const user_roles = frappe.user_roles || [];
-	const allowed = config.allowed_roles || [];
-	const can_sign = allowed.some((r) => user_roles.includes(r));
-	if (!can_sign) return;
+	const usable_templates = templates.filter((t) => (t.allowed_roles || []).some((r) => user_roles.includes(r)));
+	if (!usable_templates.length) return;
 
 	frappe.call({
 		method: "digital_sign.digital_sign.api.get_signature_status",
 		args: { doctype: frm.doctype, docname: frm.doc.name },
 		callback: (r) => {
 			const status = r.message || { signed: false };
-			digital_sign.render_button(frm, config, status);
+			digital_sign.render_button(frm, usable_templates, status);
 		},
 	});
 };
 
-digital_sign.render_button = function (frm, config, status) {
+digital_sign.render_button = function (frm, usable_templates, status) {
 	// Both actions always sit in the one "Digital Sign" group - the
 	// backend rejects signing an already-signed document (or revoking an
 	// unsigned one) with a clear message, so there's no need to hide
@@ -51,7 +54,11 @@ digital_sign.render_button = function (frm, config, status) {
 	frm.page.remove_inner_button(__("Sign Document"), __("Digital Sign"));
 	frm.page.remove_inner_button(__("Revoke Sign"), __("Digital Sign"));
 
-	frm.add_custom_button(__("Sign Document"), () => digital_sign.open_sign_dialog(frm, config), __("Digital Sign"));
+	frm.add_custom_button(
+		__("Sign Document"),
+		() => digital_sign.open_sign_dialog(frm, usable_templates),
+		__("Digital Sign")
+	);
 	frm.add_custom_button(__("Revoke Sign"), () => digital_sign.open_revoke_dialog(frm), __("Digital Sign"));
 
 	if (status.signed) {
@@ -69,62 +76,47 @@ digital_sign.render_button = function (frm, config, status) {
 	}
 };
 
-digital_sign.open_sign_dialog = function (frm, config) {
+digital_sign.open_sign_dialog = function (frm, usable_templates) {
+	const do_sign = (config_name) => {
+		frappe.call({
+			method: "digital_sign.digital_sign.api.sign_document",
+			args: { doctype: frm.doctype, docname: frm.doc.name, config_name },
+			freeze: true,
+			freeze_message: __("Signing document..."),
+			callback: (r) => {
+				if (r.message && r.message.ok) {
+					frappe.show_alert({ message: __("Document signed successfully"), indicator: "green" });
+					frm.reload_doc();
+				}
+			},
+		});
+	};
+
+	if (usable_templates.length === 1) {
+		frappe.confirm(__("Sign this document digitally? This cannot be undone (use Revoke Sign afterwards if needed)."), () =>
+			do_sign(usable_templates[0].config_name)
+		);
+		return;
+	}
+
+	// More than one template this user can sign with - let them pick.
 	const d = new frappe.ui.Dialog({
 		title: __("Digital Sign Document"),
 		fields: [
 			{
-				fieldname: "check_wrapper",
-				fieldtype: "HTML",
-				options: `<a href="#" class="digital-sign-test-anchor small text-muted">${__(
-					"Test anchor placement before signing"
-				)}</a><div class="digital-sign-test-result small" style="margin-top:6px;"></div>`,
+				fieldname: "config_name",
+				label: __("Sign Using"),
+				fieldtype: "Select",
+				reqd: 1,
+				options: usable_templates.map((t) => ({ label: t.print_format || t.config_name, value: t.config_name })),
 			},
 		],
 		primary_action_label: __("Sign"),
-		primary_action: () => {
-			frappe.call({
-				method: "digital_sign.digital_sign.api.sign_document",
-				args: { doctype: frm.doctype, docname: frm.doc.name },
-				freeze: true,
-				freeze_message: __("Signing document..."),
-				callback: (r) => {
-					if (r.message && r.message.ok) {
-						frappe.show_alert({ message: __("Document signed successfully"), indicator: "green" });
-						d.hide();
-						frm.reload_doc();
-					}
-				},
-			});
+		primary_action: (values) => {
+			d.hide();
+			do_sign(values.config_name);
 		},
 	});
-
-	d.$wrapper.find(".digital-sign-test-anchor").on("click", function (e) {
-		e.preventDefault();
-		const $result = d.$wrapper.find(".digital-sign-test-result");
-		$result.html(__("Checking..."));
-		frappe.call({
-			method: "digital_sign.digital_sign.api.test_anchor",
-			args: { doctype: frm.doctype, docname: frm.doc.name },
-			callback: (r) => {
-				const res = r.message;
-				if (res && res.found) {
-					$result.html(
-						`<span class="indicator-pill green">${__("Found")}</span> ${__("page")} ${res.page}, x=${
-							res.x
-						}pt, y=${res.y}pt`
-					);
-				} else {
-					$result.html(
-						`<span class="indicator-pill red">${__("Not found")}</span> ${
-							(res && res.message) || __("Anchor text not found in this Print Format.")
-						}`
-					);
-				}
-			},
-		});
-	});
-
 	d.show();
 };
 

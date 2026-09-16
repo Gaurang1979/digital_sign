@@ -1,6 +1,6 @@
 {
  "actions": [],
- "autoname": "field:document_type",
+ "autoname": "format:{document_type}-{print_format}",
  "creation": "2026-08-22 00:00:00.000000",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -70,7 +70,8 @@
    "fieldtype": "Link",
    "label": "Print Format",
    "options": "Print Format",
-   "description": "Which Print Format to render for signing. Leave blank to use the DocType's default Print Format - but that default can silently change later, so pin one explicitly here if you've added the anchor to a specific format (recommended)."
+   "description": "Which Print Format to render for signing. Required now that a DocType can have more than one template configured - each row needs its own distinct Print Format.",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_2",

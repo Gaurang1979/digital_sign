@@ -14,21 +14,43 @@ from digital_sign.digital_sign.signing import (
 )
 
 
-def _get_doc_config(doctype):
+def _templates_for(doctype):
 	config = get_config()
-	if doctype not in config:
+	templates = config.get(doctype) or []
+	if not templates:
 		frappe.throw(_("Digital signing is not enabled for {0}").format(doctype))
-	return config[doctype]
+	return templates
 
 
-def _check_permission(doctype, docname):
-	config = _get_doc_config(doctype)
+def _get_template(doctype, config_name=None):
+	"""Resolve one specific template. If config_name isn't given, this
+	only succeeds when the doctype has exactly one enabled template -
+	callers with more than one must specify which."""
+	templates = _templates_for(doctype)
+
+	if config_name:
+		for t in templates:
+			if t["config_name"] == config_name:
+				return t
+		frappe.throw(_("{0} is not an enabled Digital Sign Document Config for {1}").format(config_name, doctype))
+
+	if len(templates) > 1:
+		frappe.throw(_("{0} has more than one signing template configured - specify which one.").format(doctype))
+	return templates[0]
+
+
+def _check_permission(doctype, docname, config_name=None):
+	"""Permission check scoped to one specific template's own allowed
+	roles (not a union across every template for the doctype)."""
+	template = _get_template(doctype, config_name)
 	user_roles = set(frappe.get_roles())
-	allowed_roles = set(config.get("allowed_roles") or [])
+	allowed_roles = set(template.get("allowed_roles") or [])
 
 	if not allowed_roles:
 		frappe.throw(
-			_("No roles are configured to sign {0}. Check Digital Sign Document Config.").format(doctype)
+			_("No roles are configured to sign with {0}. Check Digital Sign Document Config.").format(
+				template["config_name"]
+			)
 		)
 	if not (user_roles & allowed_roles):
 		frappe.throw(_("You are not permitted to digitally sign {0}").format(doctype), frappe.PermissionError)
@@ -37,7 +59,26 @@ def _check_permission(doctype, docname):
 	if doc.docstatus != 1:
 		frappe.throw(_("Only submitted documents can be digitally signed"))
 
-	return doc, config
+	return doc, template
+
+
+def _check_permission_any(doctype, docname):
+	"""For actions (like revoke) that aren't tied to a specific signing
+	template - allowed if the user holds an allowed role on ANY enabled
+	template for this doctype."""
+	templates = _templates_for(doctype)
+	user_roles = set(frappe.get_roles())
+	allowed_roles = set()
+	for t in templates:
+		allowed_roles |= set(t.get("allowed_roles") or [])
+
+	if not (user_roles & allowed_roles):
+		frappe.throw(_("You are not permitted to manage digital signatures on {0}").format(doctype), frappe.PermissionError)
+
+	doc = frappe.get_doc(doctype, docname)
+	if doc.docstatus != 1:
+		frappe.throw(_("Only submitted documents can be digitally signed"))
+	return doc
 
 
 def _latest_log(doctype, docname):
@@ -54,8 +95,8 @@ def _latest_log(doctype, docname):
 	)
 
 
-def _render_pdf(doctype, docname, config):
-	return get_pdf(frappe.get_print(doctype, docname, print_format=config.get("print_format")))
+def _render_pdf(doctype, docname, template):
+	return get_pdf(frappe.get_print(doctype, docname, print_format=template.get("print_format")))
 
 
 @frappe.whitelist()
@@ -73,14 +114,14 @@ def get_signature_status(doctype, docname):
 
 
 @frappe.whitelist()
-def test_anchor(doctype, docname):
+def test_anchor(doctype, docname, config_name=None):
 	"""Report whether the configured anchor text is found in this
 	document's print format, and where -- without signing."""
-	doc, config = _check_permission(doctype, docname)
+	doc, template = _check_permission(doctype, docname, config_name)
 
-	pdf_bytes = _render_pdf(doctype, docname, config)
+	pdf_bytes = _render_pdf(doctype, docname, template)
 	try:
-		page_index, x, y = locate_anchor(pdf_bytes, config["anchor_text"])
+		page_index, x, y = locate_anchor(pdf_bytes, template["anchor_text"])
 	except SigningError as e:
 		return {"found": False, "message": str(e)}
 
@@ -88,8 +129,8 @@ def test_anchor(doctype, docname):
 
 
 @frappe.whitelist()
-def sign_document(doctype, docname):
-	doc, config = _check_permission(doctype, docname)
+def sign_document(doctype, docname, config_name=None):
+	doc, template = _check_permission(doctype, docname, config_name)
 
 	existing = _latest_log(doctype, docname)
 	if existing and existing.status == "Success":
@@ -102,10 +143,10 @@ def sign_document(doctype, docname):
 	reason = settings.default_reason or "Digitally Signed"
 	location = settings.default_location or ""
 
-	pdf_bytes = _render_pdf(doctype, docname, config)
+	pdf_bytes = _render_pdf(doctype, docname, template)
 
 	try:
-		page_index, x, y = locate_anchor(pdf_bytes, config["anchor_text"])
+		page_index, x, y = locate_anchor(pdf_bytes, template["anchor_text"])
 	except SigningError as e:
 		frappe.throw(str(e))
 
@@ -125,8 +166,8 @@ def sign_document(doctype, docname):
 			page=page_index + 1,
 			x=x,
 			y=y,
-			width=config["width"],
-			height=config["height"],
+			width=template["width"],
+			height=template["height"],
 			stamp_text=stamp_text,
 			reason=reason,
 			location=location,
@@ -168,6 +209,7 @@ def sign_document(doctype, docname):
 			"certificate_subject": cert_info["subject"],
 			"certificate_serial": cert_info["serial"],
 			"status": "Success",
+			"remarks": f"Signed using template: {template['config_name']}",
 		}
 	).insert(ignore_permissions=True)
 
@@ -182,7 +224,7 @@ def revoke_signature(doctype, docname, reason=None):
 	The previously signed File is left in place as a historical record;
 	it just stops being served by download_pdf / Print once revoked, and
 	the document becomes eligible to be signed again."""
-	_check_permission(doctype, docname)
+	_check_permission_any(doctype, docname)
 
 	existing = _latest_log(doctype, docname)
 	if not existing or existing.status != "Success":
@@ -235,3 +277,22 @@ def download_pdf(doctype, name, format=None, doc=None, no_letterhead=0, letterhe
 		letterhead=letterhead,
 		**kwargs,
 	)
+
+
+@frappe.whitelist()
+def check_anchor_for_config(document_type, print_format, anchor_text):
+	"""Used by Digital Sign Document Config's own pre-save validation
+	(see digital_sign_document_config.py) - tests the anchor against the
+	most recently submitted document of this type, since a config row
+	isn't tied to any one document itself."""
+	sample_name = frappe.db.get_value(document_type, {"docstatus": 1}, "name", order_by="modified desc")
+	if not sample_name:
+		return {"checked": False, "message": _("No submitted {0} exists yet to test against.").format(document_type)}
+
+	pdf_bytes = get_pdf(frappe.get_print(document_type, sample_name, print_format=print_format))
+	try:
+		page_index, x, y = locate_anchor(pdf_bytes, anchor_text)
+	except SigningError as e:
+		return {"checked": True, "found": False, "sample": sample_name, "message": str(e)}
+
+	return {"checked": True, "found": True, "sample": sample_name, "page": page_index + 1, "x": round(x, 1), "y": round(y, 1)}

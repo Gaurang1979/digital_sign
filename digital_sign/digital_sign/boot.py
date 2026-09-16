@@ -11,6 +11,10 @@ def boot_session(bootinfo):
 
 
 def get_config():
+	"""{doctype: [template, template, ...]} - a DocType can have more than
+	one Digital Sign Document Config row (different Print Formats, e.g.
+	a domestic vs. an export version of the same DocType), so this is
+	always a list even when there's only one."""
 	if not frappe.db.get_single_value("Digital Sign Settings", "enabled"):
 		return {}
 
@@ -23,12 +27,14 @@ def get_config():
 	config = {}
 	for row in rows:
 		roles = frappe.get_all("Digital Sign Role", filters={"parent": row.name}, pluck="role")
-		config[row.document_type] = {
-			"config_name": row.name,
-			"anchor_text": row.anchor_text,
-			"print_format": row.print_format or None,
-			"width": row.width or 150,
-			"height": row.height or 50,
-			"allowed_roles": roles,
-		}
+		config.setdefault(row.document_type, []).append(
+			{
+				"config_name": row.name,
+				"anchor_text": row.anchor_text,
+				"print_format": row.print_format,
+				"width": row.width or 150,
+				"height": row.height or 50,
+				"allowed_roles": roles,
+			}
+		)
 	return config
