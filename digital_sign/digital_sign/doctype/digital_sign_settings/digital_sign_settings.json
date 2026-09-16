@@ -32,7 +32,8 @@
   "include_location",
   "column_break_4",
   "include_certificate_serial",
-  "custom_stamp_text"
+  "custom_stamp_text",
+  "stamp_background_opacity"
  ],
  "fields": [
   {
@@ -192,6 +193,13 @@
    "fieldname": "custom_stamp_text",
    "fieldtype": "Small Text",
    "label": "Custom Stamp Text (overrides checkboxes)"
+  },
+  {
+   "fieldname": "stamp_background_opacity",
+   "fieldtype": "Percent",
+   "label": "Background Tick Opacity",
+   "default": "50",
+   "description": "How visible the green tick watermark behind the stamp text is - 0 removes it, 100 is fully solid."
   }
  ],
  "issingle": 1,

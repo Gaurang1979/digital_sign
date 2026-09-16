@@ -3,14 +3,20 @@
 
 frappe.ui.form.on("Digital Sign Document Config", {
 	document_type(frm) {
-		// Print Format choices should only ever be ones that actually apply
-		// to the selected DocType - avoids picking a stray format that
-		// belongs to something else entirely.
-		frm.set_value("print_format", "");
+		// Existing template rows were picked against the old DocType - a
+		// change here almost certainly invalidates them.
+		if ((frm.doc.templates || []).length) {
+			frm.clear_table("templates");
+			frm.refresh_field("templates");
+		}
 	},
+});
 
-	setup(frm) {
-		frm.set_query("print_format", () => ({
+frappe.ui.form.on("Digital Sign Print Template", {
+	form_render(frm, cdt, cdn) {
+		// Print Format choices should only ever be ones that actually
+		// apply to the parent's Document Type.
+		frm.set_query("print_format", "templates", () => ({
 			filters: { doc_type: frm.doc.document_type },
 		}));
 	},

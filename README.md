@@ -12,17 +12,19 @@ Built and verified against: Hypersecu HYP2003 token, Capricorn DSC
 ## What it does
 
 - **Digital Sign Settings** — one place to configure the token
-  (PKCS#11 library path, token label, PIN, certificate ID) and choose
-  what appears inside the visible stamp.
-- **Digital Sign Document Config** — one row per signing template: a
-  DocType, the Print Format to render it with, which roles may sign
-  with it, the anchor text, and stamp size. A DocType can have more
-  than one row (e.g. a domestic vs. export Print Format for the same
-  DocType) - the sign dialog lets the user pick when more than one
-  applies to them. Saving a row automatically tests the anchor against
-  the most recently submitted document of that type and blocks the
-  save with a clear error if it isn't actually found - no more
-  discovering a bad anchor only when someone tries to sign.
+  (PKCS#11 library path, token label, PIN, certificate ID), choose
+  what appears inside the visible stamp, and set the green-tick
+  watermark's opacity.
+- **Digital Sign Document Config** — one row per DocType, with a
+  **Templates** table inside it: one row per Print Format that DocType
+  can be signed with (e.g. a domestic vs. export Print Format for the
+  same DocType), each with its own allowed roles, anchor text, and
+  stamp size. The sign dialog lets the user pick when more than one
+  template applies to them. Saving automatically tests every enabled
+  row's anchor against the most recently submitted document of that
+  type and blocks the save with a clear, row-specific error if it
+  isn't actually found - no more discovering a bad anchor only when
+  someone tries to sign.
 - **Digital Sign button** — a "Digital Sign" group button in the
   document toolbar for submitted documents, visible only to users
   holding an allowed role, with two actions: **Sign Document** and
@@ -41,11 +43,20 @@ Built and verified against: Hypersecu HYP2003 token, Capricorn DSC
 ## Signature placement
 
 You do **not** touch individual documents. Add an invisible anchor to
-the **Print Format template** once:
+the **Print Format template** once, sized to reserve the same space
+the stamp will actually take up (otherwise the stamp overlaps whatever
+content already sits there):
 
 ```html
-<span style="color:#ffffff;">##DIGITAL_SIGN_ANCHOR##</span>
+<div style="display:inline-block; width:150px; height:50px;">
+  <span style="color:#ffffff;">##DIGITAL_SIGN_ANCHOR##</span>
+</div>
 ```
+
+Match the `width`/`height` above to the template row's own Signature
+Box Width/Height (in points, roughly px at 96dpi) - the wrapper `div`
+is what actually reserves the layout space; the anchor span just marks
+where inside it to stamp.
 
 Use `color:#ffffff` (matched to a white background — adjust if yours
 isn't white), **not** `opacity:0`. Some PDF engines skip painting
@@ -55,9 +66,9 @@ invisible. `color` matching keeps the text actually painted (findable)
 while still being invisible to the eye.
 
 At sign time the app renders the PDF, finds that text, and places the
-stamp's bottom-left corner there, sized per the DocType's config. Since
-a Print Format is shared by every document of that type, one edit
-covers all of them.
+stamp's bottom-left corner there, sized per the template row's config.
+Since a Print Format is shared by every document of that type, one
+edit covers all of them.
 
 Signing itself is a simple confirmation - click **Digital Sign → Sign
 Document**, confirm, done. The anchor is verified up front when the
@@ -69,6 +80,10 @@ Checkboxes in Settings control what's printed inside the stamp box:
 signer name, date/time, reason, location, certificate serial. For full
 control, **Custom Stamp Text** overrides them and supports
 `{signer_name}` `{date}` `{reason}` `{location}` `{certificate_serial}`.
+
+The stamp itself has no border, and shows a green tick watermark behind
+the text - **Background Tick Opacity** in Settings controls how visible
+that watermark is (0 removes it, 100 is fully solid; default 50).
 
 ---
 
@@ -146,10 +161,12 @@ sudo supervisorctl restart all
 
 2. **Print Format** — add the anchor span (above).
 
-3. **Digital Sign Document Config** — add a row per DocType (or per
-   DocType + Print Format if you need more than one template), set
-   allowed roles, the Print Format to render for signing, and anchor
-   text. Saving verifies the anchor is actually found - fix it here
+3. **Digital Sign Document Config** — one document per DocType. Inside
+   it, add a row to the **Templates** table per Print Format you want
+   to sign with: allowed roles, the Print Format itself, anchor text,
+   and stamp size. Add another row in the same table for a second
+   template on the same DocType. Saving verifies every enabled row's
+   anchor is actually found - fix it here
    before it ever reaches a real signature attempt.
 
 4. Open a submitted document, use **Digital Sign → Sign Document**

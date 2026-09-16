@@ -188,14 +188,20 @@ def sign_pdf_bytes(
 	stamp_text: str,
 	reason: str = "",
 	location: str = "",
+	background_opacity: float = 0.5,
 ) -> bytes:
 	"""Embed a visible, cryptographic (PAdES) signature at the given
 	page/coordinates. Returns the signed PDF bytes.
 
 	reason/location go into the signature's PDF metadata (what Adobe's
 	signature-properties panel shows); stamp_text controls what is
-	visually printed inside the stamp box.
+	visually printed inside the stamp box, with a green tick watermark
+	behind it at background_opacity (0-1, from Digital Sign Settings).
 	"""
+	import os
+
+	from pyhanko.pdf_utils.images import PdfImage
+
 	writer = IncrementalPdfFileWriter(io.BytesIO(pdf_bytes))
 
 	field_name = "DigitalSignature"
@@ -213,9 +219,15 @@ def sign_pdf_bytes(
 		reason=reason or None,
 		location=location or None,
 	)
-	pdf_signer = signers.PdfSigner(
-		meta, signer=signer, stamp_style=TextStampStyle(stamp_text=stamp_text)
+
+	tick_path = os.path.join(os.path.dirname(__file__), "public", "images", "green_tick.png")
+	stamp_style = TextStampStyle(
+		stamp_text=stamp_text,
+		border_width=0,
+		background=PdfImage(tick_path) if os.path.exists(tick_path) else None,
+		background_opacity=background_opacity,
 	)
+	pdf_signer = signers.PdfSigner(meta, signer=signer, stamp_style=stamp_style)
 
 	out = io.BytesIO()
 	pdf_signer.sign_pdf(writer, output=out)

@@ -1,22 +1,13 @@
 {
  "actions": [],
- "autoname": "format:{document_type}-{print_format}",
+ "autoname": "field:document_type",
  "creation": "2026-08-22 00:00:00.000000",
  "doctype": "DocType",
- "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "document_type",
-  "enabled",
-  "column_break_1",
-  "allowed_roles",
-  "section_break_1",
-  "anchor_text",
-  "anchor_help",
-  "print_format",
-  "column_break_2",
-  "width",
-  "height"
+  "section_break_templates",
+  "templates"
  ],
  "fields": [
   {
@@ -25,72 +16,25 @@
    "in_list_view": 1,
    "label": "Document Type",
    "options": "DocType",
-   "reqd": 1
+   "reqd": 1,
+   "unique": 1
   },
   {
-   "default": "1",
-   "fieldname": "enabled",
-   "fieldtype": "Check",
-   "in_list_view": 1,
-   "label": "Enabled"
-  },
-  {
-   "fieldname": "column_break_1",
-   "fieldtype": "Column Break"
-  },
-  {
-   "description": "Users holding any of these roles will see the Digital Sign button on submitted documents of this type.",
-   "fieldname": "allowed_roles",
-   "fieldtype": "Table",
-   "label": "Allowed Roles",
-   "options": "Digital Sign Role",
-   "reqd": 1
-  },
-  {
-   "fieldname": "section_break_1",
+   "fieldname": "section_break_templates",
    "fieldtype": "Section Break",
-   "label": "Signature Placement"
+   "label": "Signing Templates"
   },
   {
-   "default": "##DIGITAL_SIGN_ANCHOR##",
-   "description": "This exact text must appear somewhere in the Print Format used for this DocType, styled invisible with color:#ffffff (matching the background) - not opacity:0, which can make some PDF engines skip painting it entirely and drop it from the searchable text layer too. At sign time, the system finds this text in the rendered PDF and stamps the signature at that location -- no manual placement needed per document.",
-   "fieldname": "anchor_text",
-   "fieldtype": "Data",
-   "label": "Anchor Text",
-   "reqd": 1
-  },
-  {
-   "fieldname": "anchor_help",
-   "fieldtype": "HTML",
-   "options": "<p class=\"text-muted small\">Add this to your Print Format's HTML, anywhere you want the signature to appear:</p><pre style=\"font-size:12px;\">&lt;span style=\"color:#ffffff;\"&gt;##DIGITAL_SIGN_ANCHOR##&lt;/span&gt;</pre><p class=\"text-muted small\">Use color:#ffffff (matching the background), not opacity:0 - some PDF engines skip painting opacity:0 text entirely, which drops it from the searchable text layer and makes it impossible to find at sign time. If the surrounding background isn't white, match this color to it instead.</p><p class=\"text-muted small\">The stamp's bottom-left corner is placed at this text's position, sized per Width/Height below -- it does not need to match the anchor's own rendered size.</p>"
-  },
-  {
-   "fieldname": "print_format",
-   "fieldtype": "Link",
-   "label": "Print Format",
-   "options": "Print Format",
-   "description": "Which Print Format to render for signing. Required now that a DocType can have more than one template configured - each row needs its own distinct Print Format.",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_2",
-   "fieldtype": "Column Break"
-  },
-  {
-   "default": "150",
-   "fieldname": "width",
-   "fieldtype": "Float",
-   "label": "Signature Box Width"
-  },
-  {
-   "default": "50",
-   "fieldname": "height",
-   "fieldtype": "Float",
-   "label": "Signature Box Height"
+   "fieldname": "templates",
+   "fieldtype": "Table",
+   "label": "Templates",
+   "options": "Digital Sign Print Template",
+   "description": "One row per Print Format this DocType can be signed with. Add another row for a second template (e.g. a different Print Format for a different scenario) - saving verifies each enabled row's anchor text is actually found in its Print Format."
   }
  ],
+ "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-22 00:00:00.000000",
+ "modified": "2026-09-16 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Digital Sign",
  "name": "Digital Sign Document Config",
@@ -100,8 +44,10 @@
    "create": 1,
    "delete": 1,
    "email": 1,
+   "export": 1,
    "print": 1,
    "read": 1,
+   "report": 1,
    "role": "System Manager",
    "share": 1,
    "write": 1
@@ -110,5 +56,5 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1
+ "title_field": "document_type"
 }

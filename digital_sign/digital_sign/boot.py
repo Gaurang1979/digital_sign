@@ -12,29 +12,40 @@ def boot_session(bootinfo):
 
 def get_config():
 	"""{doctype: [template, template, ...]} - a DocType can have more than
-	one Digital Sign Document Config row (different Print Formats, e.g.
-	a domestic vs. an export version of the same DocType), so this is
-	always a list even when there's only one."""
+	one signing template (different Print Formats), stored as rows in
+	one Digital Sign Document Config's child table."""
 	if not frappe.db.get_single_value("Digital Sign Settings", "enabled"):
 		return {}
 
-	rows = frappe.get_all(
-		"Digital Sign Document Config",
-		filters={"enabled": 1},
-		fields=["name", "document_type", "anchor_text", "print_format", "width", "height"],
-	)
+	configs = frappe.get_all("Digital Sign Document Config", fields=["name", "document_type"])
 
-	config = {}
-	for row in rows:
-		roles = frappe.get_all("Digital Sign Role", filters={"parent": row.name}, pluck="role")
-		config.setdefault(row.document_type, []).append(
-			{
-				"config_name": row.name,
-				"anchor_text": row.anchor_text,
-				"print_format": row.print_format,
-				"width": row.width or 150,
-				"height": row.height or 50,
-				"allowed_roles": roles,
-			}
+	result = {}
+	for cfg in configs:
+		rows = frappe.get_all(
+			"Digital Sign Print Template",
+			filters={"parent": cfg.name, "parenttype": "Digital Sign Document Config", "enabled": 1},
+			fields=["name", "print_format", "anchor_text", "width", "height"],
 		)
-	return config
+		if not rows:
+			continue
+
+		templates = []
+		for row in rows:
+			roles = frappe.get_all(
+				"Digital Sign Role",
+				filters={"parent": row.name, "parenttype": "Digital Sign Print Template"},
+				pluck="role",
+			)
+			templates.append(
+				{
+					"config_name": row.name,
+					"anchor_text": row.anchor_text,
+					"print_format": row.print_format,
+					"width": row.width or 150,
+					"height": row.height or 50,
+					"allowed_roles": roles,
+				}
+			)
+		if templates:
+			result[cfg.document_type] = templates
+	return result
