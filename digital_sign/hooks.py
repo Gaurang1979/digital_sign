@@ -5,9 +5,13 @@ app_description = "Generic, role-based digital signing for ERPNext documents wit
 app_email = "gaurang@sundaramtech.com"
 app_license = "mit"
 
-# Load the sign button on every doctype form. The JS itself is a no-op
-# unless the current doctype is enabled in Digital Sign Document Config.
-doctype_js = {"*": "public/js/digital_sign_button.js"}
+# Load on every Desk page (doctype_js has no "*" wildcard support in
+# Frappe - see https://github.com/frappe/frappe/issues/17169 - so this
+# can't be done via doctype_js["*"]). The script itself registers
+# frappe.ui.form.on() per-doctype from frappe.boot.digital_sign_config,
+# so it only does anything on the small set of doctypes actually
+# configured in Digital Sign Document Config.
+app_include_js = "public/js/digital_sign_button.js"
 
 # Push enabled-doctype config into frappe.boot once per session instead of
 # an API call on every form load.

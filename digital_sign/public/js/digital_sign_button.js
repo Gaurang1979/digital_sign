@@ -1,18 +1,20 @@
-// Loaded on every doctype form (see hooks.py doctype_js["*"]).
-// No-ops unless the current doctype is enabled in Digital Sign Document
-// Config AND the current user holds one of its allowed roles.
+// Loaded on every Desk page via app_include_js (see hooks.py - doctype_js
+// has no "*" wildcard in Frappe, so this can't be scoped to "every doctype
+// form" at the hook level). Instead, this registers a normal per-doctype
+// frappe.ui.form.on() handler for each doctype actually present in
+// frappe.boot.digital_sign_config - a small, known set - so it only does
+// anything on forms that are actually configured for signing.
 
 window.digital_sign = window.digital_sign || {};
 
-// This file is bundled into every doctype's JS via hooks.py doctype_js["*"],
-// so its top-level code runs once per distinct doctype bundle loaded in the
-// session. Guard the wildcard registration so repeat loads don't stack up
-// duplicate refresh handlers / custom buttons.
 if (!window.digital_sign._initialized) {
-	frappe.ui.form.on("*", {
-		refresh(frm) {
-			digital_sign.setup_button(frm);
-		},
+	const configured_doctypes = Object.keys(frappe.boot.digital_sign_config || {});
+	configured_doctypes.forEach((doctype) => {
+		frappe.ui.form.on(doctype, {
+			refresh(frm) {
+				digital_sign.setup_button(frm);
+			},
+		});
 	});
 	window.digital_sign._initialized = true;
 }
