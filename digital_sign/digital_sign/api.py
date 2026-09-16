@@ -40,27 +40,29 @@ def _check_permission(doctype, docname):
 	return doc, config
 
 
-def _latest_signed_file(doctype, docname):
+def _latest_log(doctype, docname):
+	"""Most recent Digital Signature Log entry regardless of status - this
+	is the source of truth for current state. A document can be signed,
+	then revoked, then signed again; each is its own immutable row, and
+	only the latest one matters for "is this currently signed"."""
 	return frappe.db.get_value(
 		"Digital Signature Log",
-		{"reference_doctype": doctype, "reference_name": docname, "status": "Success"},
-		"signed_file",
+		{"reference_doctype": doctype, "reference_name": docname},
+		["name", "status", "signed_by", "signed_on", "signed_file"],
 		order_by="signed_on desc",
+		as_dict=True,
 	)
+
+
+def _render_pdf(doctype, docname, config):
+	return get_pdf(frappe.get_print(doctype, docname, print_format=config.get("print_format")))
 
 
 @frappe.whitelist()
 def get_signature_status(doctype, docname):
-	"""Has this document already been signed? Drives the disabled
-	'Signed' button on the form."""
-	log = frappe.db.get_value(
-		"Digital Signature Log",
-		{"reference_doctype": doctype, "reference_name": docname, "status": "Success"},
-		["name", "signed_by", "signed_on"],
-		order_by="signed_on desc",
-		as_dict=True,
-	)
-	if not log:
+	"""Currently signed, or not - drives which button(s) the form shows."""
+	log = _latest_log(doctype, docname)
+	if not log or log.status != "Success":
 		return {"signed": False}
 	return {
 		"signed": True,
@@ -76,7 +78,7 @@ def test_anchor(doctype, docname):
 	document's print format, and where -- without signing."""
 	doc, config = _check_permission(doctype, docname)
 
-	pdf_bytes = get_pdf(frappe.get_print(doctype, docname, print_format=None))
+	pdf_bytes = _render_pdf(doctype, docname, config)
 	try:
 		page_index, x, y = locate_anchor(pdf_bytes, config["anchor_text"])
 	except SigningError as e:
@@ -86,20 +88,21 @@ def test_anchor(doctype, docname):
 
 
 @frappe.whitelist()
-def sign_document(doctype, docname, reason=None):
+def sign_document(doctype, docname):
 	doc, config = _check_permission(doctype, docname)
 
-	if _latest_signed_file(doctype, docname):
-		frappe.throw(_("This document has already been digitally signed."))
+	existing = _latest_log(doctype, docname)
+	if existing and existing.status == "Success":
+		frappe.throw(_("This document is already digitally signed. Revoke the existing signature first."))
 
 	settings = frappe.get_single("Digital Sign Settings")
 	if not settings.enabled:
 		frappe.throw(_("Digital Sign Settings is disabled"))
 
-	reason = reason or settings.default_reason or "Digitally Signed"
+	reason = settings.default_reason or "Digitally Signed"
 	location = settings.default_location or ""
 
-	pdf_bytes = get_pdf(frappe.get_print(doctype, docname, print_format=None))
+	pdf_bytes = _render_pdf(doctype, docname, config)
 
 	try:
 		page_index, x, y = locate_anchor(pdf_bytes, config["anchor_text"])
@@ -173,19 +176,49 @@ def sign_document(doctype, docname, reason=None):
 
 
 @frappe.whitelist()
+def revoke_signature(doctype, docname, reason=None):
+	"""Records a revocation as a new, separate Digital Signature Log entry
+	(the log is immutable - existing entries are never edited or deleted).
+	The previously signed File is left in place as a historical record;
+	it just stops being served by download_pdf / Print once revoked, and
+	the document becomes eligible to be signed again."""
+	_check_permission(doctype, docname)
+
+	existing = _latest_log(doctype, docname)
+	if not existing or existing.status != "Success":
+		frappe.throw(_("This document is not currently signed - nothing to revoke."))
+
+	log = frappe.get_doc(
+		{
+			"doctype": "Digital Signature Log",
+			"reference_doctype": doctype,
+			"reference_name": docname,
+			"signed_by": frappe.session.user,
+			"signed_on": frappe.utils.now_datetime(),
+			"status": "Revoked",
+			"remarks": reason or "",
+		}
+	).insert(ignore_permissions=True)
+
+	frappe.db.commit()
+	return {"ok": True, "log": log.name}
+
+
+@frappe.whitelist()
 def download_pdf(doctype, name, format=None, doc=None, no_letterhead=0, letterhead=None, **kwargs):
 	"""Override for frappe.www.printview.download_pdf: serve the signed
-	PDF once one exists, else fall through to Frappe's own handler.
+	PDF once one exists (and hasn't since been revoked), else fall
+	through to Frappe's own handler.
 
 	NOTE: confirm this signature matches your Frappe version --
 	  bench --site <site> console
 	  >>> import inspect, frappe.www.printview as pv
 	  >>> inspect.signature(pv.download_pdf)
 	"""
-	signed_file_url = _latest_signed_file(doctype, name)
+	log = _latest_log(doctype, name)
 
-	if signed_file_url:
-		file_doc = frappe.get_doc("File", {"file_url": signed_file_url})
+	if log and log.status == "Success" and log.signed_file:
+		file_doc = frappe.get_doc("File", {"file_url": log.signed_file})
 		frappe.local.response.filename = f"{name}-signed.pdf"
 		frappe.local.response.filecontent = file_doc.get_content()
 		frappe.local.response.type = "download"

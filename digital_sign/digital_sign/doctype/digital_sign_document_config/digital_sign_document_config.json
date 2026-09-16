@@ -13,6 +13,7 @@
   "section_break_1",
   "anchor_text",
   "anchor_help",
+  "print_format",
   "column_break_2",
   "width",
   "height"
@@ -65,6 +66,13 @@
    "options": "<p class=\"text-muted small\">Add this to your Print Format's HTML, anywhere you want the signature to appear:</p><pre style=\"font-size:12px;\">&lt;span style=\"opacity:0;\"&gt;##DIGITAL_SIGN_ANCHOR##&lt;/span&gt;</pre><p class=\"text-muted small\">The stamp's bottom-left corner is placed at this text's position, sized per Width/Height below -- it does not need to match the anchor's own rendered size.</p>"
   },
   {
+   "fieldname": "print_format",
+   "fieldtype": "Link",
+   "label": "Print Format",
+   "options": "Print Format",
+   "description": "Which Print Format to render for signing. Leave blank to use the DocType's default Print Format - but that default can silently change later, so pin one explicitly here if you've added the anchor to a specific format (recommended)."
+  },
+  {
    "fieldname": "column_break_2",
    "fieldtype": "Column Break"
   },
@@ -104,4 +112,3 @@
  "states": [],
  "track_changes": 1
 }
-

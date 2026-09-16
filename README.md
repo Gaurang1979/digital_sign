@@ -15,14 +15,23 @@ Built and verified against: Hypersecu HYP2003 token, Capricorn DSC
   (PKCS#11 library path, token label, PIN, certificate ID) and choose
   what appears inside the visible stamp.
 - **Digital Sign Document Config** — enable signing per DocType, set
-  which roles may sign, where the stamp goes, and its size.
-- **Digital Sign button** — appears in the document toolbar for
-  submitted documents, only for users holding an allowed role. One
-  click signs; afterwards it becomes a disabled **Signed** indicator.
-- **Digital Signature Log** — immutable audit trail: who signed what,
-  when, with which certificate.
-- **Print / Download PDF** automatically serves the signed PDF once a
-  document has been signed.
+  which roles may sign/revoke, which Print Format to render for
+  signing (recommended — otherwise falls back to the DocType's default,
+  which can silently change later), where the stamp goes, and its size.
+- **Digital Sign button** — a "Digital Sign" group button in the
+  document toolbar for submitted documents, visible only to users
+  holding an allowed role, with two actions: **Sign Document** and
+  **Revoke Sign**. The backend rejects signing an already-signed
+  document (or revoking an unsigned one) with a clear message. Once
+  signed, the page shows a green "Signed" indicator — click it to see
+  who signed and when.
+- **Digital Signature Log** — immutable audit trail: every sign *and*
+  revoke is its own permanent row (revoking never edits or deletes a
+  prior entry) — who did what, when, with which certificate.
+- **Print / Download PDF** automatically serves the signed PDF while
+  the latest action for that document is a signature; after a revoke it
+  reverts to serving a fresh unsigned render, and the document can be
+  signed again from there.
 
 ## Signature placement
 
@@ -126,10 +135,14 @@ sudo supervisorctl restart all
 2. **Print Format** — add the anchor span (above).
 
 3. **Digital Sign Document Config** — add a row per DocType, set
-   allowed roles, anchor text, and stamp width/height.
+   allowed roles, the Print Format to render for signing, anchor text,
+   and stamp width/height.
 
-4. Open a submitted document, test the anchor, sign, then check
-   Print / Download PDF.
+4. Open a submitted document, use **Digital Sign → Sign Document**,
+   test the anchor first if unsure, then check Print / Download PDF.
+   **Digital Sign → Revoke Sign** reverses it (keeps the old signed
+   copy on record, but the document goes back to unsigned and can be
+   signed again).
 
 ---
 

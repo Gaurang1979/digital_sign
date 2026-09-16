@@ -17,7 +17,7 @@ def get_config():
 	rows = frappe.get_all(
 		"Digital Sign Document Config",
 		filters={"enabled": 1},
-		fields=["name", "document_type", "anchor_text", "width", "height"],
+		fields=["name", "document_type", "anchor_text", "print_format", "width", "height"],
 	)
 
 	config = {}
@@ -26,6 +26,7 @@ def get_config():
 		config[row.document_type] = {
 			"config_name": row.name,
 			"anchor_text": row.anchor_text,
+			"print_format": row.print_format or None,
 			"width": row.width or 150,
 			"height": row.height or 50,
 			"allowed_roles": roles,

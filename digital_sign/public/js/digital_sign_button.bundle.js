@@ -33,9 +33,6 @@ digital_sign.setup_button = function (frm) {
 	const can_sign = allowed.some((r) => user_roles.includes(r));
 	if (!can_sign) return;
 
-	// Check signed status, then render the button accordingly. Placed
-	// directly in the main button bar (no group argument) so it sits
-	// next to Print/Email/etc rather than tucked into a dropdown.
 	frappe.call({
 		method: "digital_sign.digital_sign.api.get_signature_status",
 		args: { doctype: frm.doctype, docname: frm.doc.name },
@@ -47,26 +44,29 @@ digital_sign.setup_button = function (frm) {
 };
 
 digital_sign.render_button = function (frm, config, status) {
-	// Remove any previous instance of this button before re-adding, so
-	// repeated refreshes (e.g. after signing) don't stack duplicates.
-	frm.custom_buttons && frm.page.remove_inner_button(status.signed ? "Signed" : "Digital Sign");
+	// Both actions always sit in the one "Digital Sign" group - the
+	// backend rejects signing an already-signed document (or revoking an
+	// unsigned one) with a clear message, so there's no need to hide
+	// either option based on current state.
+	frm.page.remove_inner_button(__("Sign Document"), __("Digital Sign"));
+	frm.page.remove_inner_button(__("Revoke Sign"), __("Digital Sign"));
+
+	frm.add_custom_button(__("Sign Document"), () => digital_sign.open_sign_dialog(frm, config), __("Digital Sign"));
+	frm.add_custom_button(__("Revoke Sign"), () => digital_sign.open_revoke_dialog(frm), __("Digital Sign"));
 
 	if (status.signed) {
 		const signed_on = status.signed_on ? frappe.datetime.str_to_user(status.signed_on) : "";
-		const $btn = frm.add_custom_button(__("Signed"), () => {
+		frm.page.set_indicator(__("Signed"), "green");
+		frm.page.$title_area.find(".indicator").off("click.digital_sign").on("click.digital_sign", () => {
 			frappe.msgprint({
 				title: __("Digital Signature"),
 				message: __("Signed by {0} on {1}.", [status.signed_by, signed_on]),
 				indicator: "green",
 			});
 		});
-		if ($btn && $btn.prop) {
-			$btn.prop("disabled", true).addClass("disabled").css("opacity", 0.6);
-		}
-		return;
+	} else {
+		frm.page.clear_indicator();
 	}
-
-	frm.add_custom_button(__("Digital Sign"), () => digital_sign.open_sign_dialog(frm, config));
 };
 
 digital_sign.open_sign_dialog = function (frm, config) {
@@ -74,34 +74,18 @@ digital_sign.open_sign_dialog = function (frm, config) {
 		title: __("Digital Sign Document"),
 		fields: [
 			{
-				fieldname: "reason",
-				label: __("Reason (optional)"),
-				fieldtype: "Data",
-			},
-			{
 				fieldname: "check_wrapper",
 				fieldtype: "HTML",
 				options: `<a href="#" class="digital-sign-test-anchor small text-muted">${__(
 					"Test anchor placement before signing"
 				)}</a><div class="digital-sign-test-result small" style="margin-top:6px;"></div>`,
 			},
-			{
-				fieldname: "help",
-				fieldtype: "HTML",
-				options: `<p class="text-muted small">${__(
-					"The signature will be stamped automatically at the anchor location defined in this document's Print Format. This is a one-time action per document."
-				)}</p>`,
-			},
 		],
 		primary_action_label: __("Sign"),
-		primary_action: (values) => {
+		primary_action: () => {
 			frappe.call({
 				method: "digital_sign.digital_sign.api.sign_document",
-				args: {
-					doctype: frm.doctype,
-					docname: frm.doc.name,
-					reason: values.reason,
-				},
+				args: { doctype: frm.doctype, docname: frm.doc.name },
 				freeze: true,
 				freeze_message: __("Signing document..."),
 				callback: (r) => {
@@ -139,6 +123,44 @@ digital_sign.open_sign_dialog = function (frm, config) {
 				}
 			},
 		});
+	});
+
+	d.show();
+};
+
+digital_sign.open_revoke_dialog = function (frm) {
+	const d = new frappe.ui.Dialog({
+		title: __("Revoke Digital Signature"),
+		fields: [
+			{
+				fieldname: "warning",
+				fieldtype: "HTML",
+				options: `<p class="text-muted small">${__(
+					"This keeps the existing signed copy on record for audit purposes, but the document becomes unsigned going forward - Print / Download PDF will serve a fresh, unsigned copy, and it can be signed again."
+				)}</p>`,
+			},
+			{
+				fieldname: "reason",
+				label: __("Reason (optional)"),
+				fieldtype: "Small Text",
+			},
+		],
+		primary_action_label: __("Revoke"),
+		primary_action: (values) => {
+			frappe.call({
+				method: "digital_sign.digital_sign.api.revoke_signature",
+				args: { doctype: frm.doctype, docname: frm.doc.name, reason: values.reason },
+				freeze: true,
+				freeze_message: __("Revoking..."),
+				callback: (r) => {
+					if (r.message && r.message.ok) {
+						frappe.show_alert({ message: __("Signature revoked"), indicator: "orange" });
+						d.hide();
+						frm.reload_doc();
+					}
+				},
+			});
+		},
 	});
 
 	d.show();
