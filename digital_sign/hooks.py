@@ -17,7 +17,13 @@ app_license = "mit"
 # that filename suffix, anywhere under public/. A plain .js file here is
 # silently invisible to the build - it compiles "successfully" having
 # bundled nothing, with no error at all.
-app_include_js = "public/js/digital_sign_button.bundle.js"
+#
+# NOTE: this value must match the BARE filename exactly as it appears as
+# a key in sites/assets/assets.json (no "public/js/" prefix) - Frappe
+# resolves app_include_js by exact-string lookup against that file to
+# find the actual hashed output path. A prefixed/mismatched string here
+# misses the lookup and falls back to a literal (broken) raw path.
+app_include_js = "digital_sign_button.bundle.js"
 
 # Push enabled-doctype config into frappe.boot once per session instead of
 # an API call on every form load.
