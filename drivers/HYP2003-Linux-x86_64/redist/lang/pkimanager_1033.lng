@@ -1,0 +1,235 @@
+[settings]
+; 1033 = 0x0409
+CodePage=1033
+Language=English
+FontHeight=9
+
+[strings]
+
+;==============================================================
+; Common strings
+;==============================================================
+wxID_OK=OK
+wxID_CANCEL=Cancel
+
+
+133=HyperPKI Manager for HYP2003 (User)
+134=HyperPKI Manager for HYP2003 (Admin)
+
+801=Token is blocked by user PIN.
+802=The PIN is too long
+803=User PIN incorrect.\n\n The token has been blocked.
+804=User PIN incorrect.\n\nFinal log in attempt. If log in fails, user PIN will be blocked.
+805=User PIN incorrect.
+814=Your PIN has been changed.
+821=Invalid token name.
+822=Unable to change token name.
+823=Your token name has been changed.
+833=Unable to change SO PIN.
+834=Your SO PIN has been changed.
+835=Token has been blocked by SO PIN.
+836=SO PIN exceeds maximum range. Please try again.
+837=Incorrect SO PIN entered.\n\nYour token is blocked by SO PIN!
+838=Incorrect SO PIN entered.\n\n Final SO PIN attempt. If SO PIN fails, token will be blocked.
+839=Incorrect SO PIN.
+843=Failed to unblock token.
+844=Your token has been unblocked.
+854=Failed to initialize token.
+855=Token initialized successfully.
+871=Certificate exported successfully.
+872=File could not be created.
+873=Select a path to export your certificate.
+874=Select a certificate file.
+1260=Deleting will permanently remove the selected data stored on this token. Are you sure you want to delete?
+1261=Deletion succesful.
+1262=Deletion failed.
+
+5015=Unknown error.
+5020=Token has been removed.
+5025=Incorrect password.
+5026=No enough space available.
+5027=File not found.
+5030=Certificate is not supported.
+5031=Only %d-%d RSA key pairs are supported.
+5032=Certificate not supported.
+5033=The same certificate or key has been found in this container. Select another container or create a new one.
+5034=Invalid session handle due to other operation.
+9999=Password must be between 6 to 20 characters using numbers or letters.
+
+10100=Description
+10101=Token status
+10102=Manufacturer
+10103=Token inserted
+10104=The inserted token cannot be recognized
+10105=<Token not found>
+10106=<Card not recognized>
+10107=Token list
+10108=Data management
+10109=Flags
+10110=Hardware version
+10111=Firmware version
+10112=Token name
+10113=Model
+10114=Serial number
+10115=Max session number
+10117=Max R/W session number
+10119=Max PIN length
+10120=Min PIN length
+10121=Total public memory
+10122=Free public memory
+10123=Total private memory
+10124=Free private memory
+10125=Hardware version
+10126=Firmware version
+10127=Token timer
+10128=<No built-in timer>
+10129=<Card not recognized>
+
+;Get slot error!
+
+;DataMgrPanel
+wxID_CERT_STATIC=Your Certificates:
+10150=&Certificates:
+ID_BUTTON_IMPORT=Import
+10151=&Import
+ID_BUTTON_EXPORT=Export
+10152=&Export
+ID_BUTTON_VIEW=View
+10153=&View
+ID_BUTTON_DELETE=Delete
+10154=&Delete
+
+;Dlg_About
+ID_DIALOG_ABOUT=About HyperPKI Manager for HYP2003
+wxID_ABOUT_V_STATIC=HyperPKI Manager for HYP2003 v.1.0
+wxID_ABOUT_P_STATIC=Developed by Hypersecu Information Systems Inc
+wxID__ABOUT_C_STATIC=Copyright (C) 2023 Hypersecu Information Systems Inc
+
+;Dlg_ChangeSOPin
+ID_DIALOG_CHANGESOPIN=Change SO PIN
+wxID_CHSP_SP_STATIC=Enter SO PIN:
+wxID_CHSP_NEW_STATIC=Enter new SO PIN (min. %d characters):
+wxID_CHSP_RE_STATIC=Confirm new SO PIN:
+
+;Dlg_ChangeTokenName
+ID_DIALOG_CHANGETOKENNAME=Rename token
+wxID_CHTN_CTN_STATIC=Current token name:
+wxID_STATIC_TOKENNAME=HYP2003
+wxID_CHTN_NEW_STATIC=New token name:
+
+;Dlg_ChangeUserPin
+ID_DIALOG_CHANGEUSERPIN=Change user PIN
+wxID_CHUP_UP_STATIC=Enter user PIN:
+wxID_CHUP_NEW_STATIC=Enter new user PIN (min. %d characters):
+wxID_CHUP_RE_STATIC=Confirm new user PIN:
+
+;Dlg_ExportCert
+ID_DIALOG_EXPORTCERT=Export certificate
+wxID_EXC_PATH_STATIC=Certificate path:
+
+;Dlg_ImportCert
+ID_DIALOG_IMPORTCERT=Import certificate
+wxID_IMC_PATH_STATIC=Certificate path:
+wxID_STATIC_PASSWORD=Certificate password:
+
+;Dlg_InitToken
+ID_DIALOG_INITTOKEN=Initialize token
+wxID_INIT_SP_STATIC=SO PIN:
+wxID_INIT_NEW_UP_STATIC=New user PIN (min. %d characters):
+wxID_INIT_RE_UP_STATIC=Confirm new user PIN:
+wxID_INIT_TN_STATIC=Set token name:
+
+;Dlg_Login
+ID_DIALOG_LOGIN=Log in
+wxID_LOGIN_PIN_STATIC=User PIN:
+
+;Dlg_UnblockToken
+ID_DIALOG_UNLOCKTOKEN=Unblock token
+wxID_UNLOCK_SP_STATIC=SO PIN:
+wxID_UNLOCK_NEW_UP_STATIC=Enter new user PIN (min. %d characters):
+wxID_UNLOCK_RE_UP_STATIC=Confirm new user PIN:
+
+;Dlg_ViewValue
+ID_DIALOG_VIEWVALUE=View data
+
+;======================
+;MainMenu
+;======================
+128=&File
+129=&View
+130=&Manage
+131=&About
+
+57664=&About HyperPKI Manager for HYP2003...
+57665=E&xit
+32789=&Slot Info
+32790=Hide &Empty Slots
+
+32771=&Log in
+32772=Rename token
+32773=Change user &PIN
+32774=&Change SO PIN
+32775=&Unblock token
+32776=&Initialize token
+
+;SlotInfoPanel
+wxID_SLOT_STATIC=Token detailed information:
+10000=&Token detailed information:
+
+;SlotsInfoPanel
+wxID_SLOTS_STATIC=Token detail:
+10001 = &Token detail:
+
+;TokenInfoPanel
+wxID_TOKEN_SLOT_STATIC=Token detailed information:
+10002=&Token detailed information:
+wxID_TOKEN_STATIC=Token detailed information:
+10003=&Token detailed information:
+wxID_STATIC_USER=User Purview:
+10004=User Tools
+
+ID_BUTTON_LOGIN=&Login
+10005=&Log in
+ID_BUTTON_CHANGEUSERPIN=Change User &PIN
+10006=&Change user PIN
+ID_BUTTON_CHANGETOKENNAME=Rename
+10007=&Rename token
+
+wxID_STATIC_SO=Secure Officer Purview:
+10008=Admin Tools
+ID_BUTTON_CHANGESOPIN=&Change SO PIN
+10009=&Change SO PIN
+ID_BUTTON_UNLOCKTOKEN=&Unblock token
+10010=&Unblock token
+ID_BUTTON_INITTOKEN=&Initialize token
+10011=&Initialize token
+
+;Dlg_SetLoginTimer
+ID_DIALOG_SETLOGINTIMER=Set login timeout
+ID_CHECKBOX_SET_TIMEOUT=Set login timeout
+wxID_STATIC_SET_LOGIN_TIMER=Set login timeout:
+wxID_STATIC_TIMER_UNIT=(1-36000 sec)
+
+;Dlg_SelectLanguage
+ID_DIALOG_SELECT_LANGUAGE=Select Language
+wxID_STATIC_SELECT_LANGUAGE=Select language:
+
+5035=Session has timed out. Please log in again.
+5036=Language file could not be found.
+5037=Login timeout setting error.
+5038=Could not find language in listed files.
+5039=Language selected.\n\nLanguage change will take effect the next time you open HyperPKI Manager.
+
+32777=Set login timeout
+
+57666=&Select Language
+
+///new
+10130=Certificate
+10131=Public key
+10132=Private key
+10133=Data
+10134=Field
+10135=Type
+10136=Value
+

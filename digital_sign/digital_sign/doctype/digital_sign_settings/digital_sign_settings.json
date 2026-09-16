@@ -1,0 +1,219 @@
+{
+ "actions": [],
+ "creation": "2026-08-22 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "signer_name",
+  "column_break_1",
+  "default_reason",
+  "default_location",
+  "section_break_1",
+  "pkcs11_module_path",
+  "token_label",
+  "token_pin",
+  "column_break_2",
+  "certificate_id",
+  "key_id",
+  "certificate_label",
+  "key_label",
+  "section_break_2",
+  "token_help",
+  "certificate_subject",
+  "certificate_serial",
+  "certificate_valid_until",
+  "section_break_3",
+  "include_signer_name",
+  "include_date",
+  "column_break_3",
+  "include_reason",
+  "include_location",
+  "column_break_4",
+  "include_certificate_serial",
+  "custom_stamp_text"
+ ],
+ "fields": [
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "signer_name",
+   "fieldtype": "Data",
+   "label": "Signer / Organization Name",
+   "mandatory_depends_on": "eval:doc.enabled"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Approved and Digitally Signed",
+   "fieldname": "default_reason",
+   "fieldtype": "Data",
+   "label": "Default Reason"
+  },
+  {
+   "fieldname": "default_location",
+   "fieldtype": "Data",
+   "label": "Default Location"
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break",
+   "label": "USB Token (PKCS#11)"
+  },
+  {
+   "default": "/opt/hypersecu/libcastle_v2.so.1.0.0",
+   "description": "Full path to the token vendor's PKCS#11 library on the server.",
+   "fieldname": "pkcs11_module_path",
+   "fieldtype": "Data",
+   "label": "PKCS#11 Module Path",
+   "mandatory_depends_on": "eval:doc.enabled"
+  },
+  {
+   "default": "HYP2003",
+   "description": "Token label as reported by: pkcs11-tool --module <path> -L",
+   "fieldname": "token_label",
+   "fieldtype": "Data",
+   "label": "Token Label"
+  },
+  {
+   "description": "The token's User PIN. Stored encrypted. Anyone with a signing role can sign using this token, so restrict those roles carefully.",
+   "fieldname": "token_pin",
+   "fieldtype": "Password",
+   "label": "Token PIN",
+   "mandatory_depends_on": "eval:doc.enabled"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Hex ID of the signing certificate on the token (from pkcs11-tool -O). Preferred, since DSC token labels are often blank.",
+   "fieldname": "certificate_id",
+   "fieldtype": "Small Text",
+   "label": "Certificate ID (hex)"
+  },
+  {
+   "description": "Optional. Defaults to the Certificate ID if left blank -- on most DSC tokens the key and certificate share an ID.",
+   "fieldname": "key_id",
+   "fieldtype": "Small Text",
+   "label": "Private Key ID (hex)"
+  },
+  {
+   "description": "Alternative to Certificate ID, if your token uses labels instead.",
+   "fieldname": "certificate_label",
+   "fieldtype": "Data",
+   "label": "Certificate Label"
+  },
+  {
+   "fieldname": "key_label",
+   "fieldtype": "Data",
+   "label": "Private Key Label"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break",
+   "label": "Certificate Details (read-only, filled on save)"
+  },
+  {
+   "fieldname": "token_help",
+   "fieldtype": "HTML",
+   "options": "<p class=\"text-muted small\">To find the certificate ID, run on the server:</p><pre style=\"font-size:12px;\">pkcs11-tool --module /opt/hypersecu/libcastle_v2.so.1.0.0 -O</pre><p class=\"text-muted small\">Copy the <b>ID</b> value of the certificate issued in your name (not the CA chain certificates) into Certificate ID above. The USB token must stay plugged into the server for signing to work.</p>"
+  },
+  {
+   "fieldname": "certificate_subject",
+   "fieldtype": "Small Text",
+   "label": "Certificate Subject",
+   "read_only": 1
+  },
+  {
+   "fieldname": "certificate_serial",
+   "fieldtype": "Data",
+   "label": "Certificate Serial",
+   "read_only": 1
+  },
+  {
+   "fieldname": "certificate_valid_until",
+   "fieldtype": "Data",
+   "label": "Valid Until",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_3",
+   "fieldtype": "Section Break",
+   "label": "Stamp Content"
+  },
+  {
+   "default": "1",
+   "description": "Which details to print inside the visible stamp box. Ignored if Custom Stamp Text is filled in.",
+   "fieldname": "include_signer_name",
+   "fieldtype": "Check",
+   "label": "Include Signer Name"
+  },
+  {
+   "default": "1",
+   "fieldname": "include_date",
+   "fieldtype": "Check",
+   "label": "Include Date/Time"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "include_reason",
+   "fieldtype": "Check",
+   "label": "Include Reason"
+  },
+  {
+   "default": "0",
+   "fieldname": "include_location",
+   "fieldtype": "Check",
+   "label": "Include Location"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "include_certificate_serial",
+   "fieldtype": "Check",
+   "label": "Include Certificate Serial"
+  },
+  {
+   "description": "Optional. If filled, overrides the checkboxes and is used verbatim. Placeholders: {signer_name} {date} {reason} {location} {certificate_serial}",
+   "fieldname": "custom_stamp_text",
+   "fieldtype": "Small Text",
+   "label": "Custom Stamp Text (overrides checkboxes)"
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-09-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Digital Sign",
+ "name": "Digital Sign Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

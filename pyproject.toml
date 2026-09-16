@@ -1,0 +1,19 @@
+[project]
+name = "digital_sign"
+authors = [
+    { name = "Sundaram Technologies", email = "gaurang@sundaramtech.com" }
+]
+description = "Generic, role-based digital signing for ERPNext documents with per-document signature placement."
+requires-python = ">=3.10"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = [
+    "pyHanko[opentype,pkcs11]>=0.18.0",
+    "cryptography>=41.0.0",
+    "pypdf>=5.4.0",
+    "PyMuPDF>=1.24.0",
+]
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"

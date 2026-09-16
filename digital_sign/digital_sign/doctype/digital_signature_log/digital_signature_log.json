@@ -1,0 +1,146 @@
+{
+ "actions": [],
+ "autoname": "format:DSL-{#####}",
+ "creation": "2026-08-22 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "reference_doctype",
+  "reference_name",
+  "status",
+  "column_break_1",
+  "signed_by",
+  "signed_on",
+  "section_break_1",
+  "page",
+  "x",
+  "y",
+  "column_break_2",
+  "signed_file",
+  "section_break_2",
+  "certificate_subject",
+  "certificate_serial",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Document Type",
+   "options": "DocType",
+   "reqd": 1
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "label": "Document Name",
+   "options": "reference_doctype",
+   "reqd": 1
+  },
+  {
+   "default": "Success",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Success\nFailed"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "signed_by",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Signed By",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "signed_on",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Signed On",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break",
+   "label": "Placement"
+  },
+  {
+   "fieldname": "page",
+   "fieldtype": "Int",
+   "label": "Page"
+  },
+  {
+   "fieldname": "x",
+   "fieldtype": "Float",
+   "label": "X"
+  },
+  {
+   "fieldname": "y",
+   "fieldtype": "Float",
+   "label": "Y"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "signed_file",
+   "fieldtype": "Data",
+   "label": "Signed File URL"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break",
+   "label": "Certificate Used"
+  },
+  {
+   "fieldname": "certificate_subject",
+   "fieldtype": "Data",
+   "label": "Certificate Subject"
+  },
+  {
+   "fieldname": "certificate_serial",
+   "fieldtype": "Data",
+   "label": "Certificate Serial"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "links": [],
+ "modified": "2026-08-22 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Digital Sign",
+ "name": "Digital Signature Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "All"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+node_modules/
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Never commit credentials, keys, or exported certificates
+*.pfx
+*.p12
+*.key
+*.pem
+secrets.*
+*_pin.txt
