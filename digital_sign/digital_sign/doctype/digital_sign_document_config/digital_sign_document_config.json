@@ -54,7 +54,7 @@
   },
   {
    "default": "##DIGITAL_SIGN_ANCHOR##",
-   "description": "This exact text must appear somewhere in the Print Format used for this DocType (make it invisible with CSS, e.g. opacity:0). At sign time, the system finds this text in the rendered PDF and stamps the signature at that location -- no manual placement needed per document.",
+   "description": "This exact text must appear somewhere in the Print Format used for this DocType, styled invisible with color:#ffffff (matching the background) - not opacity:0, which can make some PDF engines skip painting it entirely and drop it from the searchable text layer too. At sign time, the system finds this text in the rendered PDF and stamps the signature at that location -- no manual placement needed per document.",
    "fieldname": "anchor_text",
    "fieldtype": "Data",
    "label": "Anchor Text",
@@ -63,7 +63,7 @@
   {
    "fieldname": "anchor_help",
    "fieldtype": "HTML",
-   "options": "<p class=\"text-muted small\">Add this to your Print Format's HTML, anywhere you want the signature to appear:</p><pre style=\"font-size:12px;\">&lt;span style=\"opacity:0;\"&gt;##DIGITAL_SIGN_ANCHOR##&lt;/span&gt;</pre><p class=\"text-muted small\">The stamp's bottom-left corner is placed at this text's position, sized per Width/Height below -- it does not need to match the anchor's own rendered size.</p>"
+   "options": "<p class=\"text-muted small\">Add this to your Print Format's HTML, anywhere you want the signature to appear:</p><pre style=\"font-size:12px;\">&lt;span style=\"color:#ffffff;\"&gt;##DIGITAL_SIGN_ANCHOR##&lt;/span&gt;</pre><p class=\"text-muted small\">Use color:#ffffff (matching the background), not opacity:0 - some PDF engines skip painting opacity:0 text entirely, which drops it from the searchable text layer and makes it impossible to find at sign time. If the surrounding background isn't white, match this color to it instead.</p><p class=\"text-muted small\">The stamp's bottom-left corner is placed at this text's position, sized per Width/Height below -- it does not need to match the anchor's own rendered size.</p>"
   },
   {
    "fieldname": "print_format",

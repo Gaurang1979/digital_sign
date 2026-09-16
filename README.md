@@ -44,8 +44,15 @@ You do **not** touch individual documents. Add an invisible anchor to
 the **Print Format template** once:
 
 ```html
-<span style="opacity:0;">##DIGITAL_SIGN_ANCHOR##</span>
+<span style="color:#ffffff;">##DIGITAL_SIGN_ANCHOR##</span>
 ```
+
+Use `color:#ffffff` (matched to a white background — adjust if yours
+isn't white), **not** `opacity:0`. Some PDF engines skip painting
+`opacity:0` text entirely, which drops it from the PDF's searchable
+text layer too — the anchor becomes genuinely unfindable, not just
+invisible. `color` matching keeps the text actually painted (findable)
+while still being invisible to the eye.
 
 At sign time the app renders the PDF, finds that text, and places the
 stamp's bottom-left corner there, sized per the DocType's config. Since

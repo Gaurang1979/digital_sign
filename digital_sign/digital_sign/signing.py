@@ -113,20 +113,34 @@ def locate_anchor(pdf_bytes: bytes, anchor_text: str):
 	"""Find anchor_text in the rendered PDF; return (page_index, x, y) in
 	PDF user-space points (origin bottom-left) for the stamp's
 	bottom-left corner."""
+	import re
+
 	import fitz  # PyMuPDF
+
+	# PDF text extraction can introduce or collapse whitespace when the
+	# anchor sits inline next to other text rather than on its own line -
+	# try the exact string first, then a whitespace-normalised variant.
+	candidates = [anchor_text]
+	normalised = re.sub(r"\s+", " ", anchor_text).strip()
+	if normalised != anchor_text:
+		candidates.append(normalised)
 
 	pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
 	try:
 		for page_index in range(pdf.page_count):
 			page = pdf[page_index]
-			matches = page.search_for(anchor_text)
-			if matches:
-				rect = matches[0]
-				# fitz rects are top-down; flip to PDF bottom-up space.
-				return page_index, rect.x0, page.rect.height - rect.y1
+			for candidate in candidates:
+				matches = page.search_for(candidate)
+				if matches:
+					rect = matches[0]
+					# fitz rects are top-down; flip to PDF bottom-up space.
+					return page_index, rect.x0, page.rect.height - rect.y1
 		raise SigningError(
 			f"Anchor text '{anchor_text}' was not found in the rendered print format. "
-			"Add it to the Print Format's HTML (see Digital Sign Document Config)."
+			"Add it to the Print Format's HTML (see Digital Sign Document Config). "
+			"Common cause: styling the anchor with opacity:0 can make some PDF engines skip "
+			"painting it entirely, dropping it from the searchable text layer too - use "
+			"color:#ffffff (matching the background) instead."
 		)
 	finally:
 		pdf.close()

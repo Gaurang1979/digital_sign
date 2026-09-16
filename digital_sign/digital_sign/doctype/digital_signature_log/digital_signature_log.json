@@ -103,12 +103,12 @@
   },
   {
    "fieldname": "certificate_subject",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "Certificate Subject"
   },
   {
    "fieldname": "certificate_serial",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "Certificate Serial"
   },
   {
