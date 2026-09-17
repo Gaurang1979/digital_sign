@@ -1,0 +1,57 @@
+{
+ "app": "digital_sign",
+ "charts": [],
+ "content": "[{\"id\":\"ds-header-1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Digital Sign</span>\",\"col\":12}},{\"id\":\"ds-spacer-1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ds-sc-1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Digital Sign Settings\",\"col\":3}},{\"id\":\"ds-sc-2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Digital Sign Document Config\",\"col\":3}},{\"id\":\"ds-sc-3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Digital Signature Log\",\"col\":3}}]",
+ "creation": "2026-09-16 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "edit",
+ "idx": 1,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Digital Sign",
+ "link_type": "DocType",
+ "links": [],
+ "modified": "2026-09-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Digital Sign",
+ "name": "Digital Sign",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 1.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "label": "Digital Sign Settings",
+   "link_to": "Digital Sign Settings",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Digital Sign Document Config",
+   "link_to": "Digital Sign Document Config",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Digital Signature Log",
+   "link_to": "Digital Signature Log",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Digital Sign",
+ "type": "Workspace"
+}

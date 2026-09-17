@@ -77,7 +77,7 @@
    "fieldtype": "Table MultiSelect",
    "label": "Allowed Roles",
    "options": "Digital Sign Role",
-   "in_list_view": 1
+   "in_list_view": 0
   }
  ],
  "istable": 1,

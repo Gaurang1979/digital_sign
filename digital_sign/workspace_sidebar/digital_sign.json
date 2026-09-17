@@ -1,0 +1,65 @@
+{
+ "app": "digital_sign",
+ "creation": "2026-09-16 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "edit",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Digital Sign",
+   "link_to": "Digital Sign",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link",
+   "url": "/desk/digital-sign"
+  },
+  {
+   "child": 1,
+   "collapsible": 0,
+   "icon": "",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Digital Sign Settings",
+   "link_to": "Digital Sign Settings",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 0,
+   "icon": "",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Digital Sign Document Config",
+   "link_to": "Digital Sign Document Config",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 0,
+   "icon": "",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Digital Signature Log",
+   "link_to": "Digital Signature Log",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-09-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "Digital Sign",
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "title": "Digital Sign"
+}
