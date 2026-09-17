@@ -97,8 +97,32 @@ def _latest_log(doctype, docname):
 	)
 
 
+def _render_pdf_isolated(doctype, docname, print_format):
+	"""frappe.get_print() can internally route through Frappe's website
+	printview page renderer for certain print formats (confirmed: some
+	e-invoice-style formats do this, "Sales Order Final" apparently
+	doesn't), and that path reads doctype/name from frappe.form_dict - the
+	CURRENT REQUEST's global state - rather than from the arguments
+	passed to get_print() directly. Calling this from inside an unrelated
+	request (e.g. the anchor pre-check running nested inside a Document
+	Config save) leaves form_dict populated with THAT request's own data,
+	so the nested render can end up asking for the wrong document
+	entirely (observed: "Sales Invoice None not found", since a Document
+	Config save's form_dict has no top-level "name" matching a Sales
+	Invoice). Snapshot and set form_dict explicitly around the call, and
+	always restore it afterward, so the nested render sees the right
+	document regardless of what triggered it - cheap enough to do on
+	every render, not just the ones known to hit this."""
+	original_form_dict = frappe.local.form_dict
+	frappe.local.form_dict = frappe._dict({"doctype": doctype, "name": docname, "format": print_format})
+	try:
+		return get_pdf(frappe.get_print(doctype, docname, print_format=print_format))
+	finally:
+		frappe.local.form_dict = original_form_dict
+
+
 def _render_pdf(doctype, docname, template):
-	return get_pdf(frappe.get_print(doctype, docname, print_format=template.get("print_format")))
+	return _render_pdf_isolated(doctype, docname, template.get("print_format"))
 
 
 @frappe.whitelist()
@@ -321,7 +345,7 @@ def check_anchor_for_config(document_type, print_format, anchor_text):
 		# we're deliberately swallowing the actual error and retrying.
 		message_log_mark = len(frappe.local.message_log)
 		try:
-			pdf_bytes = get_pdf(frappe.get_print(document_type, sample_name, print_format=print_format))
+			pdf_bytes = _render_pdf_isolated(document_type, sample_name, print_format)
 		except Exception as e:
 			last_render_error = e
 			# frappe.get_traceback() only returns anything useful while
