@@ -35,5 +35,11 @@ extend_bootinfo = "digital_sign.digital_sign.boot.boot_session"
 # NOTE: verify this dotted path matches your installed Frappe version --
 # see the "Before you go live" section in README.md.
 override_whitelisted_methods = {
-	"frappe.www.printview.download_pdf": "digital_sign.digital_sign.api.download_pdf"
+	# Frappe's actual "PDF"/"Download PDF" button calls
+	# frappe.utils.print_format.download_pdf (confirmed from the exact
+	# request URL it sends) - frappe.www.printview.download_pdf is kept
+	# too since that's the older/legacy name some Frappe versions and
+	# direct API callers still use.
+	"frappe.utils.print_format.download_pdf": "digital_sign.digital_sign.api.download_pdf",
+	"frappe.www.printview.download_pdf": "digital_sign.digital_sign.api.download_pdf",
 }
