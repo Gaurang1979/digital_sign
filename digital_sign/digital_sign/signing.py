@@ -102,6 +102,33 @@ def build_signer(session, settings):
 		raise SigningError(f"Could not select the certificate on the token: {e}")
 
 
+def _cert_summary(cert) -> dict:
+	"""Shared by certificate_details() (one specific cert, already
+	selected) and list_certificates() (every cert on the token) - so the
+	timezone conversion and expiry logic can't drift out of sync between
+	the two."""
+	# X.509 certificates always encode validity dates in UTC.
+	# asn1crypto's .native gives a timezone-aware UTC datetime - str() on
+	# that directly shows raw UTC with a "+00:00" suffix, which reads as
+	# flatly wrong to anyone not thinking in UTC (a ~5.5 hour gap for an
+	# India-based site). Convert to the site's own timezone before
+	# formatting.
+	valid_until_utc = cert["tbs_certificate"]["validity"]["not_after"].native
+	valid_until_local = frappe.utils.convert_utc_to_system_timezone(valid_until_utc)
+	is_expired = valid_until_utc <= datetime.now(valid_until_utc.tzinfo or timezone.utc)
+	try:
+		is_ca = bool(cert.ca)
+	except Exception:
+		is_ca = None
+	return {
+		"subject": cert.subject.human_friendly,
+		"serial": str(cert.serial_number),
+		"valid_until": valid_until_local.strftime("%Y-%m-%d %H:%M:%S") + f" ({frappe.utils.get_system_timezone()})",
+		"is_expired": is_expired,
+		"is_ca": is_ca,
+	}
+
+
 def certificate_details(signer) -> dict:
 	"""Human-readable subject/serial/validity for display and audit -
 	always read fresh from whatever certificate is currently on the
@@ -115,29 +142,43 @@ def certificate_details(signer) -> dict:
 	with a DIFFERENT ID, leaving the old (now expired) one still present
 	- in that case Certificate ID / Private Key ID in Digital Sign
 	Settings is still pointing at the stale object and needs to be
-	updated by hand to the new one. is_expired below exists specifically
-	to catch and surface that situation loudly instead of silently
-	signing with a dead certificate.
+	updated by hand to the new one (see list_certificates() below, which
+	is what "Browse Certificates on Token" uses to make that a point-and
+	-click fix instead). is_expired below exists specifically to catch
+	and surface that situation loudly instead of silently signing with a
+	dead certificate.
 	"""
 	try:
-		cert = signer.signing_cert
-		# X.509 certificates always encode validity dates in UTC.
-		# asn1crypto's .native gives a timezone-aware UTC datetime - str()
-		# on that directly (the previous behaviour) shows raw UTC with a
-		# "+00:00" suffix, which reads as flatly wrong to anyone not
-		# thinking in UTC (a ~5.5 hour gap for an India-based site).
-		# Convert to the site's own timezone before formatting.
-		valid_until_utc = cert["tbs_certificate"]["validity"]["not_after"].native
-		valid_until_local = frappe.utils.convert_utc_to_system_timezone(valid_until_utc)
-		is_expired = valid_until_utc <= datetime.now(valid_until_utc.tzinfo or timezone.utc)
-		return {
-			"subject": cert.subject.human_friendly,
-			"serial": str(cert.serial_number),
-			"valid_until": valid_until_local.strftime("%Y-%m-%d %H:%M:%S") + f" ({frappe.utils.get_system_timezone()})",
-			"is_expired": is_expired,
-		}
+		return _cert_summary(signer.signing_cert)
 	except Exception:
 		return {"subject": "", "serial": "", "valid_until": "", "is_expired": None}
+
+
+def list_certificates(session) -> list:
+	"""Every certificate object currently on the token (not just the one
+	Digital Sign Settings is configured to use) - lets the admin actually
+	see what's there and pick one, rather than having to run
+	`pkcs11-tool -O` externally and paste a hex ID by hand. Used by the
+	"Browse Certificates on Token" button in Digital Sign Settings."""
+	import pkcs11
+	from asn1crypto import x509
+
+	certs = []
+	for obj in session.get_objects({pkcs11.Attribute.CLASS: pkcs11.ObjectClass.CERTIFICATE}):
+		try:
+			cert_id = obj[pkcs11.Attribute.ID]
+			label = obj[pkcs11.Attribute.LABEL]
+			cert = x509.Certificate.load(obj[pkcs11.Attribute.VALUE])
+			certs.append(
+				{
+					"id": cert_id.hex(),
+					"label": label,
+					**_cert_summary(cert),
+				}
+			)
+		except Exception:
+			continue  # not everything on a token parses as a usable end-entity cert - skip, don't fail the whole list
+	return certs
 
 
 DEFAULT_STAMP_WIDTH = 160

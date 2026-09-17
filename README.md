@@ -173,13 +173,25 @@ sudo supervisorctl restart all
    - PKCS#11 Module Path: `/opt/hypersecu/libcastle_v2.so.1.0.0`
    - Token Label: `HYP2003` (from `pkcs11-tool -L`)
    - Token PIN
-   - Certificate ID (hex): the `ID:` of *your* certificate from
-     `pkcs11-tool -O` — not the CA chain certificates
-   - Leave Private Key ID blank unless your token uses a different ID
-     for the key
+   - Save with just the above filled in, then click **Browse
+     Certificates on Token** — lists every certificate actually on the
+     token (subject, serial, valid until, expired/valid) and sets
+     Certificate ID / Private Key ID for you with one click on **Use
+     This**. This is the easy path, especially after renewing a
+     certificate on an existing token (the renewed certificate often
+     ends up as a *new* object with a different ID rather than
+     replacing the old one in place - Browse makes picking the right
+     one a click instead of manually diffing `pkcs11-tool -O` output).
+   - Alternatively, set Certificate ID (hex) by hand from `pkcs11-tool
+     -O`'s `ID:` field for *your* certificate — not the CA chain
+     certificates. Leave Private Key ID blank unless your token uses a
+     different ID for the key.
 
-   Saving opens the token and fills in the certificate subject, serial
-   and expiry. If that fails, fix it before going further.
+   Saving (or clicking Refresh Certificate Info) opens the token and
+   fills in the certificate subject, serial and expiry. If the
+   certificate found is already expired, Settings shows a red warning
+   naming the likely cause (see above) - Browse Certificates on Token
+   is the fastest way to fix it.
 
 2. **Print Format** — add the anchor span (above).
 
