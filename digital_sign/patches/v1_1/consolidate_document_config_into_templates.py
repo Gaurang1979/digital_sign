@@ -48,6 +48,17 @@ def execute():
 	for row in old_rows:
 		by_doctype.setdefault(row.document_type, []).append(row)
 
+	# The Digital Sign Print Template doctype was just created by this
+	# same migrate run's schema sync - post_model_sync guarantees its
+	# table exists, but Frappe's in-memory meta cache doesn't auto-refresh
+	# mid-process for a doctype introduced in that same run. Without this,
+	# parent.append("templates", {}) / child.append("allowed_roles", {})
+	# below fail with AttributeError, since _init_child can't find fields
+	# on a doctype it doesn't yet know exists.
+	frappe.reload_doctype("Digital Sign Document Config", force=True)
+	frappe.reload_doctype("Digital Sign Print Template", force=True)
+	frappe.reload_doctype("Digital Sign Role", force=True)
+
 	# Delete every old row first - a new parent doc's autoname resolves to
 	# the bare document_type, which would collide with an old row already
 	# sitting under that exact name otherwise.
