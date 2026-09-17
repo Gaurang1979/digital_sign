@@ -45,11 +45,13 @@ Built and verified against: Hypersecu HYP2003 token, Capricorn DSC
 You do **not** touch individual documents. Add an invisible anchor to
 the **Print Format template** once, sized to reserve the same space
 the stamp will actually take up (otherwise the stamp overlaps whatever
-content already sits there):
+content already sits there). The stamp's size comes directly from the
+anchor text itself - `:WxH` at the end - not from a separate field, so
+it can never drift out of sync with what the HTML actually reserves:
 
 ```html
 <div style="display:inline-block; position:relative; width:160px; height:80px; margin:4px 0;">
-  <span style="color:#ffffff; position:absolute; left:0; bottom:0;">##DIGITAL_SIGN_ANCHOR##</span>
+  <span style="color:#ffffff; position:absolute; left:0; bottom:0;">##DIGITAL_SIGN_ANCHOR:160x80##</span>
 </div>
 ```
 
@@ -57,20 +59,26 @@ content already sits there):
 Settings (signer name, reason, location, date, certificate serial),
 that's up to 5 lines of text - the stamp font is 7pt specifically to
 keep that legible in a compact box, but it still needs real room; a
-smaller box (like the 150x40 used in earlier revisions of this doc)
-will overflow and overlap surrounding content.
+smaller box will overflow and overlap surrounding content. Leaving off
+the `:WxH` suffix entirely (plain `##DIGITAL_SIGN_ANCHOR##`) falls back
+to 160x80 automatically.
 
-Match the `width`/`height` above to the template row's own Signature
-Box Width/Height (in points, roughly px at 96dpi). The stamp's
-bottom-left corner is placed exactly where the anchor *text* sits -
-not just anywhere inside the wrapper `div` - so `position:absolute;
-left:0; bottom:0;` matters: without it, the anchor sits at the div's
-top by default and the stamp (which extends upward-right from the
-anchor) overlaps whatever's above the box instead of filling it. The
-stamp text is vertically centered within whatever height you give it,
-so a tall-enough box centers the whole stamp automatically between
-surrounding lines - the small `margin` above adds a buffer so it never
-quite touches text directly above the box either.
+**Keep the `div`'s own `width`/`height` matching the number in the
+anchor text exactly** - the `div` reserves the layout space so the
+stamp doesn't overlap surrounding content, and the anchor text tells
+the signing code how big to actually draw the stamp; if the two
+disagree, the stamp will be sized correctly but may not fit the space
+you reserved for it.
+
+The stamp's bottom-left corner is placed exactly where the anchor
+*text* sits - not just anywhere inside the wrapper `div` - so
+`position:absolute; left:0; bottom:0;` matters: without it, the anchor
+sits at the div's top by default and the stamp (which extends
+upward-right from the anchor) overlaps whatever's above the box
+instead of filling it. The stamp content (text and the tick
+background) is centered both directions within that box automatically
+- the small `margin` above adds a buffer so it never quite touches
+text directly above the box either.
 
 Use `color:#ffffff` (matched to a white background — adjust if yours
 isn't white), **not** `opacity:0`. Some PDF engines skip painting

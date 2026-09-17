@@ -18,7 +18,13 @@ def get_config():
 	per-template - Table MultiSelect fields don't work reliably nested
 	inside a child table, a longstanding Frappe limitation - but every
 	template dict still carries its own allowed_roles key so api.py and
-	the frontend don't need to know that."""
+	the frontend don't need to know that.
+
+	Stamp size is NOT looked up here - it's parsed straight out of the
+	anchor_text itself (e.g. ##DIGITAL_SIGN_ANCHOR:160x80##) at sign
+	time, in signing.py's locate_anchor(), so the HTML is the single
+	source of truth for size instead of a separate field that has to be
+	kept in sync with it by hand."""
 	if not frappe.db.get_single_value("Digital Sign Settings", "enabled"):
 		return {}
 
@@ -35,7 +41,7 @@ def get_config():
 		rows = frappe.get_all(
 			"Digital Sign Print Template",
 			filters={"parent": cfg.name, "parenttype": "Digital Sign Document Config", "enabled": 1},
-			fields=["name", "print_format", "anchor_text", "width", "height"],
+			fields=["name", "print_format", "anchor_text"],
 		)
 		if not rows:
 			continue
@@ -45,8 +51,6 @@ def get_config():
 				"config_name": row.name,
 				"anchor_text": row.anchor_text,
 				"print_format": row.print_format,
-				"width": row.width or 150,
-				"height": row.height or 50,
 				"allowed_roles": roles,
 			}
 			for row in rows

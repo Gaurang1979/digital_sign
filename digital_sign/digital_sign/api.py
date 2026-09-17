@@ -149,11 +149,11 @@ def test_anchor(doctype, docname, config_name=None):
 
 	pdf_bytes = _render_pdf(doctype, docname, template)
 	try:
-		page_index, x, y = locate_anchor(pdf_bytes, template["anchor_text"])
+		page_index, x, y, width, height = locate_anchor(pdf_bytes, template["anchor_text"])
 	except SigningError as e:
 		return {"found": False, "message": str(e)}
 
-	return {"found": True, "page": page_index + 1, "x": round(x, 1), "y": round(y, 1)}
+	return {"found": True, "page": page_index + 1, "x": round(x, 1), "y": round(y, 1), "width": width, "height": height}
 
 
 @frappe.whitelist()
@@ -174,7 +174,7 @@ def sign_document(doctype, docname, config_name=None):
 	pdf_bytes = _render_pdf(doctype, docname, template)
 
 	try:
-		page_index, x, y = locate_anchor(pdf_bytes, template["anchor_text"])
+		page_index, x, y, width, height = locate_anchor(pdf_bytes, template["anchor_text"])
 	except SigningError as e:
 		frappe.throw(str(e))
 
@@ -194,8 +194,8 @@ def sign_document(doctype, docname, config_name=None):
 			page=page_index + 1,
 			x=x,
 			y=y,
-			width=template["width"],
-			height=template["height"],
+			width=width,
+			height=height,
 			stamp_text=stamp_text,
 			reason=reason,
 			location=location,

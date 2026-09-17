@@ -15,9 +15,13 @@ pcscd must be running, for signing to work.
 """
 
 import io
+import os
+import re
 
 import frappe
 
+from pyhanko.pdf_utils.images import PdfImage
+from pyhanko.pdf_utils.layout import AxisAlignment, SimpleBoxLayoutRule
 from pyhanko.sign import fields, signers
 from pyhanko.sign.pkcs11 import PKCS11Signer, open_pkcs11_session
 from pyhanko.sign.signers.pdf_signer import PdfSignatureMetadata
@@ -98,25 +102,55 @@ def build_signer(session, settings):
 
 
 def certificate_details(signer) -> dict:
-	"""Human-readable subject/serial/validity for display and audit."""
+	"""Human-readable subject/serial/validity for display and audit -
+	always read fresh from whatever certificate is currently on the
+	token, never cached, so a future certificate renewal (same token, new
+	cert) is picked up automatically the next time this runs - no manual
+	step needed beyond what already happens on every sign/refresh."""
 	try:
 		cert = signer.signing_cert
+		# X.509 certificates always encode validity dates in UTC.
+		# asn1crypto's .native gives a timezone-aware UTC datetime - str()
+		# on that directly (the previous behaviour) shows raw UTC with a
+		# "+00:00" suffix, which reads as flatly wrong to anyone not
+		# thinking in UTC (a ~5.5 hour gap for an India-based site).
+		# Convert to the site's own timezone before formatting.
+		valid_until_utc = cert["tbs_certificate"]["validity"]["not_after"].native
+		valid_until_local = frappe.utils.convert_utc_to_system_timezone(valid_until_utc)
 		return {
 			"subject": cert.subject.human_friendly,
 			"serial": str(cert.serial_number),
-			"valid_until": str(cert["tbs_certificate"]["validity"]["not_after"].native),
+			"valid_until": valid_until_local.strftime("%Y-%m-%d %H:%M:%S") + f" ({frappe.utils.get_system_timezone()})",
 		}
 	except Exception:
 		return {"subject": "", "serial": "", "valid_until": ""}
 
 
-def locate_anchor(pdf_bytes: bytes, anchor_text: str):
-	"""Find anchor_text in the rendered PDF; return (page_index, x, y) in
-	PDF user-space points (origin bottom-left) for the stamp's
-	bottom-left corner."""
-	import re
+DEFAULT_STAMP_WIDTH = 160
+DEFAULT_STAMP_HEIGHT = 80
 
+_SIZE_PATTERN = re.compile(r":(\d+)x(\d+)")
+
+
+def _parse_stamp_size(anchor_text: str):
+	"""Size lives in the anchor text itself (e.g.
+	##DIGITAL_SIGN_ANCHOR:160x80##) - the single source of truth is
+	whatever's actually in the Print Format's HTML, not a separate field
+	that has to be kept in sync with it by hand. Falls back to a sane
+	default for anchors written without the :WxH suffix."""
+	m = _SIZE_PATTERN.search(anchor_text)
+	if m:
+		return int(m.group(1)), int(m.group(2))
+	return DEFAULT_STAMP_WIDTH, DEFAULT_STAMP_HEIGHT
+
+
+def locate_anchor(pdf_bytes: bytes, anchor_text: str):
+	"""Find anchor_text in the rendered PDF; return (page_index, x, y,
+	width, height) in PDF user-space points (origin bottom-left) for the
+	stamp's bottom-left corner and size."""
 	import fitz  # PyMuPDF
+
+	width, height = _parse_stamp_size(anchor_text)
 
 	# PDF text extraction can introduce or collapse whitespace when the
 	# anchor sits inline next to other text rather than on its own line -
@@ -135,7 +169,7 @@ def locate_anchor(pdf_bytes: bytes, anchor_text: str):
 				if matches:
 					rect = matches[0]
 					# fitz rects are top-down; flip to PDF bottom-up space.
-					return page_index, rect.x0, page.rect.height - rect.y1
+					return page_index, rect.x0, page.rect.height - rect.y1, width, height
 		raise SigningError(
 			f"Anchor text '{anchor_text}' was not found in the rendered print format. "
 			"Add it to the Print Format's HTML (see Digital Sign Document Config). "
@@ -145,6 +179,7 @@ def locate_anchor(pdf_bytes: bytes, anchor_text: str):
 		)
 	finally:
 		pdf.close()
+
 
 
 def build_stamp_text(settings, reason: str, location: str, cert_info: dict) -> str:
@@ -199,10 +234,6 @@ def sign_pdf_bytes(
 	visually printed inside the stamp box, with a green tick watermark
 	behind it at background_opacity (0-1, from Digital Sign Settings).
 	"""
-	import os
-
-	from pyhanko.pdf_utils.images import PdfImage
-
 	writer = IncrementalPdfFileWriter(io.BytesIO(pdf_bytes))
 
 	field_name = "DigitalSignature"
@@ -236,6 +267,14 @@ def sign_pdf_bytes(
 		# the box by default, so a tall-enough reserved HTML box centers
 		# the whole stamp automatically - no extra positioning needed.
 		text_box_style=TextBoxStyle(font_size=7, leading=8),
+		# Centers the inner text box (as a block) within the full stamp
+		# box horizontally and vertically - the box itself is exactly
+		# (width, height) from the anchor text, so this keeps the stamp
+		# content centered within that box rather than pinned to a
+		# corner. background_layout defaults to the same MID/MID
+		# centering already, so the tick watermark and the text block
+		# both center consistently.
+		inner_content_layout=SimpleBoxLayoutRule(x_align=AxisAlignment.ALIGN_MID, y_align=AxisAlignment.ALIGN_MID),
 	)
 	pdf_signer = signers.PdfSigner(meta, signer=signer, stamp_style=stamp_style)
 

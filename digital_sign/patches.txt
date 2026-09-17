@@ -1,7 +1,5 @@
 [pre_model_sync]
-# No patches need pre_model_sync timing yet - Frappe's patch parser
-# requires this section header to exist even when empty, or migrate
-# throws "Patch type PatchType.pre_model_sync not found in patches.txt".
+digital_sign.patches.v1_4.embed_size_in_anchor_text
 
 [post_model_sync]
 digital_sign.patches.v1_1.consolidate_document_config_into_templates

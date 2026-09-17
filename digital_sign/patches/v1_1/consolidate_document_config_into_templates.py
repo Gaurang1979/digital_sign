@@ -21,7 +21,25 @@ SQL, since by this point the DocType's own meta no longer declares them
 is still physically there to read).
 """
 
+import re
+
 import frappe
+
+_SIZE_PATTERN = re.compile(r":(\d+)x(\d+)")
+
+
+def _with_embedded_size(anchor_text, width, height):
+	"""Embed a row's old width/height (from before those were separate
+	fields) into its anchor text as :WxH, unless it's already sized -
+	matches signing.py's _parse_stamp_size() convention."""
+	anchor_text = anchor_text or "##DIGITAL_SIGN_ANCHOR##"
+	if _SIZE_PATTERN.search(anchor_text):
+		return anchor_text
+	w = int(width) if width else 160
+	h = int(height) if height else 80
+	if anchor_text.endswith("##"):
+		return f"{anchor_text[:-2]}:{w}x{h}##"
+	return f"{anchor_text}:{w}x{h}"
 
 
 def execute():
@@ -82,9 +100,13 @@ def execute():
 			child = parent.append("templates", {})
 			child.enabled = row.enabled
 			child.print_format = row.print_format
-			child.anchor_text = row.anchor_text
-			child.width = row.width
-			child.height = row.height
+			# width/height are no longer separate fields on Digital Sign
+			# Print Template - size now lives embedded in the anchor text
+			# itself (e.g. ##DIGITAL_SIGN_ANCHOR:160x80##), so it can
+			# never drift out of sync with what the Print Format's HTML
+			# actually reserves. Embed this row's old width/height into
+			# its anchor text if it isn't already sized.
+			child.anchor_text = _with_embedded_size(row.anchor_text, row.width, row.height)
 
 		# Skip the (now much heavier, per-row PDF-rendering) validate()
 		# during a bulk migration - the data is coming straight from
