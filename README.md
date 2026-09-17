@@ -48,15 +48,18 @@ the stamp will actually take up (otherwise the stamp overlaps whatever
 content already sits there):
 
 ```html
-<div style="display:inline-block; width:150px; height:50px;">
-  <span style="color:#ffffff;">##DIGITAL_SIGN_ANCHOR##</span>
+<div style="display:inline-block; position:relative; width:150px; height:50px;">
+  <span style="color:#ffffff; position:absolute; left:0; bottom:0;">##DIGITAL_SIGN_ANCHOR##</span>
 </div>
 ```
 
 Match the `width`/`height` above to the template row's own Signature
-Box Width/Height (in points, roughly px at 96dpi) - the wrapper `div`
-is what actually reserves the layout space; the anchor span just marks
-where inside it to stamp.
+Box Width/Height (in points, roughly px at 96dpi). The stamp's
+bottom-left corner is placed exactly where the anchor *text* sits -
+not just anywhere inside the wrapper `div` - so `position:absolute;
+left:0; bottom:0;` matters: without it, the anchor sits at the div's
+top by default and the stamp (which extends upward-right from the
+anchor) overlaps whatever's above the box instead of filling it.
 
 Use `color:#ffffff` (matched to a white background — adjust if yours
 isn't white), **not** `opacity:0`. Some PDF engines skip painting
