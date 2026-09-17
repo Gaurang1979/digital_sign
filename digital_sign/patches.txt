@@ -1,2 +1,3 @@
 [post_model_sync]
 digital_sign.patches.v1_1.consolidate_document_config_into_templates
+digital_sign.patches.v1_2.inline_signed_pdf_content

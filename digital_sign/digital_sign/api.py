@@ -1,3 +1,5 @@
+import base64
+
 import frappe
 from frappe import _
 from frappe.utils.pdf import get_pdf
@@ -185,17 +187,6 @@ def sign_document(doctype, docname, config_name=None):
 			except Exception:
 				pass
 
-	file_doc = frappe.get_doc(
-		{
-			"doctype": "File",
-			"file_name": f"{docname}-signed.pdf",
-			"attached_to_doctype": doctype,
-			"attached_to_name": docname,
-			"is_private": 1,
-			"content": signed_bytes,
-		}
-	).insert(ignore_permissions=True)
-
 	log = frappe.get_doc(
 		{
 			"doctype": "Digital Signature Log",
@@ -206,7 +197,10 @@ def sign_document(doctype, docname, config_name=None):
 			"page": page_index + 1,
 			"x": x,
 			"y": y,
-			"signed_file": file_doc.file_url,
+			# Stored inline (base64) rather than as a File attached to the
+			# business document - keeps it out of that document's own
+			# Attachments list and avoids a second, duplicate on-disk copy.
+			"signed_file": base64.b64encode(signed_bytes).decode("ascii"),
 			"certificate_subject": cert_info["subject"],
 			"certificate_serial": cert_info["serial"],
 			"status": "Success",
@@ -215,16 +209,16 @@ def sign_document(doctype, docname, config_name=None):
 	).insert(ignore_permissions=True)
 
 	frappe.db.commit()
-	return {"ok": True, "log": log.name, "file_url": file_doc.file_url}
+	return {"ok": True, "log": log.name}
 
 
 @frappe.whitelist()
 def revoke_signature(doctype, docname, reason=None):
 	"""Records a revocation as a new, separate Digital Signature Log entry
 	(the log is immutable - existing entries are never edited or deleted).
-	The previously signed File is left in place as a historical record;
-	it just stops being served by download_pdf / Print once revoked, and
-	the document becomes eligible to be signed again."""
+	The previously signed PDF stays on that earlier entry as a historical
+	record; it just stops being served by download_pdf / Print once
+	revoked, and the document becomes eligible to be signed again."""
 	_check_permission_any(doctype, docname)
 
 	existing = _latest_log(doctype, docname)
@@ -261,9 +255,8 @@ def download_pdf(doctype, name, format=None, doc=None, no_letterhead=0, letterhe
 	log = _latest_log(doctype, name)
 
 	if log and log.status == "Success" and log.signed_file:
-		file_doc = frappe.get_doc("File", {"file_url": log.signed_file})
 		frappe.local.response.filename = f"{name}-signed.pdf"
-		frappe.local.response.filecontent = file_doc.get_content()
+		frappe.local.response.filecontent = base64.b64decode(log.signed_file)
 		frappe.local.response.type = "download"
 		return
 
