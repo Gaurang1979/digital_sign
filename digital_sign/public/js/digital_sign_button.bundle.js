@@ -67,7 +67,7 @@ digital_sign.render_button = function (frm, usable_templates, status) {
 		frm.page.$title_area.find(".indicator").off("click.digital_sign").on("click.digital_sign", () => {
 			frappe.msgprint({
 				title: __("Digital Signature"),
-				message: __("Signed by {0} on {1}.", [status.signed_by, signed_on]),
+				message: __("Signed by {0} on {1}.", [status.performed_by_name || status.signed_by, signed_on]),
 				indicator: "green",
 			});
 		});

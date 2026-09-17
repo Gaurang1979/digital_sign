@@ -11,6 +11,7 @@
   "status",
   "column_break_1",
   "signed_by",
+  "performed_by_name",
   "signed_on",
   "section_break_1",
   "page",
@@ -55,10 +56,18 @@
   {
    "fieldname": "signed_by",
    "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Signed By",
+   "in_list_view": 0,
+   "label": "Performed By",
    "options": "User",
    "reqd": 1
+  },
+  {
+   "fieldname": "performed_by_name",
+   "fieldtype": "Data",
+   "label": "Name",
+   "fetch_from": "signed_by.full_name",
+   "read_only": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "signed_on",

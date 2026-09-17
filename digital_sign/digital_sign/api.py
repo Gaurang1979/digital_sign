@@ -91,7 +91,7 @@ def _latest_log(doctype, docname):
 	return frappe.db.get_value(
 		"Digital Signature Log",
 		{"reference_doctype": doctype, "reference_name": docname},
-		["name", "status", "signed_by", "signed_on", "signed_file"],
+		["name", "status", "signed_by", "performed_by_name", "signed_on", "signed_file"],
 		order_by="signed_on desc",
 		as_dict=True,
 	)
@@ -111,6 +111,7 @@ def get_signature_status(doctype, docname):
 		"signed": True,
 		"log": log.name,
 		"signed_by": log.signed_by,
+		"performed_by_name": log.performed_by_name or log.signed_by,
 		"signed_on": str(log.signed_on),
 	}
 
@@ -193,6 +194,7 @@ def sign_document(doctype, docname, config_name=None):
 			"reference_doctype": doctype,
 			"reference_name": docname,
 			"signed_by": frappe.session.user,
+			"performed_by_name": frappe.utils.get_fullname(frappe.session.user),
 			"signed_on": frappe.utils.now_datetime(),
 			"page": page_index + 1,
 			"x": x,
@@ -231,6 +233,7 @@ def revoke_signature(doctype, docname, reason=None):
 			"reference_doctype": doctype,
 			"reference_name": docname,
 			"signed_by": frappe.session.user,
+			"performed_by_name": frappe.utils.get_fullname(frappe.session.user),
 			"signed_on": frappe.utils.now_datetime(),
 			"status": "Revoked",
 			"remarks": reason or "",
