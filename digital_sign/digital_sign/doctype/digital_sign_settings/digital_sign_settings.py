@@ -40,6 +40,26 @@ class DigitalSignSettings(Document):
 		self.certificate_serial = info["serial"]
 		self.certificate_valid_until = info["valid_until"]
 
+		if info.get("is_expired"):
+			# Not a hard block on save - the admin may well be in the
+			# middle of fixing Certificate ID after a renewal, and
+			# forcing them to abandon that edit to get past this would
+			# be worse than just warning loudly. sign_document() itself
+			# (see api.py) DOES hard-block signing with an expired
+			# certificate - this is purely so it's impossible to miss
+			# here too, as early as possible.
+			frappe.msgprint(
+				_(
+					"This certificate (Serial: {0}) has already expired (Valid Until: {1}). If you've "
+					"renewed the certificate on this same token, the new one may have a different object "
+					"ID than what's configured here - run pkcs11-tool --module &lt;path&gt; -O on the "
+					"server to find the current certificate's ID and update Certificate ID / Private Key "
+					"ID above."
+				).format(self.certificate_serial, self.certificate_valid_until),
+				title=_("Certificate Expired"),
+				indicator="red",
+			)
+
 
 @frappe.whitelist()
 def test_token():

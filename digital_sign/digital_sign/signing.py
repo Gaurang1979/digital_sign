@@ -17,6 +17,7 @@ pcscd must be running, for signing to work.
 import io
 import os
 import re
+from datetime import datetime, timezone
 
 import frappe
 
@@ -106,7 +107,18 @@ def certificate_details(signer) -> dict:
 	always read fresh from whatever certificate is currently on the
 	token, never cached, so a future certificate renewal (same token, new
 	cert) is picked up automatically the next time this runs - no manual
-	step needed beyond what already happens on every sign/refresh."""
+	step needed beyond what already happens on every sign/refresh.
+
+	IMPORTANT CAVEAT: "picked up automatically" only holds if the renewed
+	certificate replaced the old one AT THE SAME PKCS#11 object ID. Some
+	token renewal tools instead add the new certificate as a NEW object
+	with a DIFFERENT ID, leaving the old (now expired) one still present
+	- in that case Certificate ID / Private Key ID in Digital Sign
+	Settings is still pointing at the stale object and needs to be
+	updated by hand to the new one. is_expired below exists specifically
+	to catch and surface that situation loudly instead of silently
+	signing with a dead certificate.
+	"""
 	try:
 		cert = signer.signing_cert
 		# X.509 certificates always encode validity dates in UTC.
@@ -117,13 +129,15 @@ def certificate_details(signer) -> dict:
 		# Convert to the site's own timezone before formatting.
 		valid_until_utc = cert["tbs_certificate"]["validity"]["not_after"].native
 		valid_until_local = frappe.utils.convert_utc_to_system_timezone(valid_until_utc)
+		is_expired = valid_until_utc <= datetime.now(valid_until_utc.tzinfo or timezone.utc)
 		return {
 			"subject": cert.subject.human_friendly,
 			"serial": str(cert.serial_number),
 			"valid_until": valid_until_local.strftime("%Y-%m-%d %H:%M:%S") + f" ({frappe.utils.get_system_timezone()})",
+			"is_expired": is_expired,
 		}
 	except Exception:
-		return {"subject": "", "serial": "", "valid_until": ""}
+		return {"subject": "", "serial": "", "valid_until": "", "is_expired": None}
 
 
 DEFAULT_STAMP_WIDTH = 160

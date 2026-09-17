@@ -186,6 +186,17 @@ def sign_document(doctype, docname, config_name=None):
 		session = open_session(settings)
 		signer = build_signer(session, settings)
 		cert_info = certificate_details(signer)
+
+		if cert_info.get("is_expired"):
+			raise SigningError(
+				f"The certificate on the token (Serial: {cert_info.get('serial')}, "
+				f"Valid Until: {cert_info.get('valid_until')}) has already expired. "
+				"If you've renewed the certificate on this same token, the new certificate may have "
+				"been added as a NEW object with a DIFFERENT ID rather than replacing the old one - "
+				"run pkcs11-tool --module <path> -O on the server to find the current (non-CA) "
+				"certificate's ID, then update Certificate ID / Private Key ID in Digital Sign Settings."
+			)
+
 		stamp_text = build_stamp_text(settings, reason, location, cert_info)
 
 		signed_bytes = sign_pdf_bytes(
