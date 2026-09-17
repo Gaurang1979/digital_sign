@@ -279,17 +279,48 @@ def download_pdf(doctype, name, format=None, doc=None, no_letterhead=0, letterhe
 @frappe.whitelist()
 def check_anchor_for_config(document_type, print_format, anchor_text):
 	"""Used by Digital Sign Document Config's own pre-save validation
-	(see digital_sign_document_config.py) - tests the anchor against the
-	most recently submitted document of this type, since a config row
-	isn't tied to any one document itself."""
-	sample_name = frappe.db.get_value(document_type, {"docstatus": 1}, "name", order_by="modified desc")
-	if not sample_name:
+	(see digital_sign_document_config.py) - tests the anchor against a
+	recently submitted document of this type, since a config row isn't
+	tied to any one document itself.
+
+	Tries a few candidate documents, not just the single most recent one:
+	some print formats reference a related document (e.g. Return Against,
+	Amended From) without checking whether it's actually set, and crash
+	while rendering for any sample where that happens to be blank - that's
+	a pre-existing fragility in the print format itself, not something
+	this check should hard-fail the whole config save over.
+	"""
+	sample_names = frappe.get_all(
+		document_type,
+		filters={"docstatus": 1},
+		pluck="name",
+		order_by="modified desc",
+		limit=3,
+	)
+	if not sample_names:
 		return {"checked": False, "message": _("No submitted {0} exists yet to test against.").format(document_type)}
 
-	pdf_bytes = get_pdf(frappe.get_print(document_type, sample_name, print_format=print_format))
-	try:
-		page_index, x, y = locate_anchor(pdf_bytes, anchor_text)
-	except SigningError as e:
-		return {"checked": True, "found": False, "sample": sample_name, "message": str(e)}
+	last_render_error = None
+	for sample_name in sample_names:
+		try:
+			pdf_bytes = get_pdf(frappe.get_print(document_type, sample_name, print_format=print_format))
+		except Exception as e:
+			last_render_error = e
+			continue  # this specific document's data tripped up the print format - try another
 
-	return {"checked": True, "found": True, "sample": sample_name, "page": page_index + 1, "x": round(x, 1), "y": round(y, 1)}
+		try:
+			page_index, x, y = locate_anchor(pdf_bytes, anchor_text)
+		except SigningError as e:
+			return {"checked": True, "found": False, "sample": sample_name, "message": str(e)}
+
+		return {"checked": True, "found": True, "sample": sample_name, "page": page_index + 1, "x": round(x, 1), "y": round(y, 1)}
+
+	# Every sample we tried failed to even render - that's a Print Format
+	# problem, not something to block saving the signing config over.
+	frappe.log_error(frappe.get_traceback(), "Digital Sign: anchor pre-check render failed")
+	return {
+		"checked": False,
+		"message": _(
+			"Couldn't render {0} with Print Format {1} to test the anchor (tried {2} document(s)) - {3}"
+		).format(document_type, print_format, len(sample_names), str(last_render_error)),
+	}

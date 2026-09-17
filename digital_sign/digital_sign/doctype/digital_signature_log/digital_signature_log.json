@@ -106,7 +106,8 @@
    "label": "Signed PDF (base64)",
    "description": "The full signed PDF, base64-encoded, stored directly here rather than as a File attached to the business document - keeps it out of that document's own Attachments list. Not shown in the grid/list view (too large to be useful there).",
    "print_hide": 1,
-   "in_list_view": 0
+   "in_list_view": 0,
+   "hidden": 1
   },
   {
    "fieldname": "section_break_2",
