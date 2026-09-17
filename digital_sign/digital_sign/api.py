@@ -382,11 +382,20 @@ def check_anchor_for_config(document_type, print_format, anchor_text):
 			continue  # this specific document's data tripped up the print format - try another
 
 		try:
-			page_index, x, y = locate_anchor(pdf_bytes, anchor_text)
+			page_index, x, y, width, height = locate_anchor(pdf_bytes, anchor_text)
 		except SigningError as e:
 			return {"checked": True, "found": False, "sample": sample_name, "message": str(e)}
 
-		return {"checked": True, "found": True, "sample": sample_name, "page": page_index + 1, "x": round(x, 1), "y": round(y, 1)}
+		return {
+			"checked": True,
+			"found": True,
+			"sample": sample_name,
+			"page": page_index + 1,
+			"x": round(x, 1),
+			"y": round(y, 1),
+			"width": width,
+			"height": height,
+		}
 
 	# Every sample we tried failed to even render - that's a Print Format
 	# problem, not something to block saving the signing config over.
