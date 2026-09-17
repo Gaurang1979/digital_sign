@@ -48,10 +48,17 @@ the stamp will actually take up (otherwise the stamp overlaps whatever
 content already sits there):
 
 ```html
-<div style="display:inline-block; position:relative; width:150px; height:50px;">
+<div style="display:inline-block; position:relative; width:160px; height:80px; margin:4px 0;">
   <span style="color:#ffffff; position:absolute; left:0; bottom:0;">##DIGITAL_SIGN_ANCHOR##</span>
 </div>
 ```
+
+**Recommended minimum: 160x80.** With every stamp field enabled in
+Settings (signer name, reason, location, date, certificate serial),
+that's up to 5 lines of text - the stamp font is 7pt specifically to
+keep that legible in a compact box, but it still needs real room; a
+smaller box (like the 150x40 used in earlier revisions of this doc)
+will overflow and overlap surrounding content.
 
 Match the `width`/`height` above to the template row's own Signature
 Box Width/Height (in points, roughly px at 96dpi). The stamp's
@@ -59,7 +66,11 @@ bottom-left corner is placed exactly where the anchor *text* sits -
 not just anywhere inside the wrapper `div` - so `position:absolute;
 left:0; bottom:0;` matters: without it, the anchor sits at the div's
 top by default and the stamp (which extends upward-right from the
-anchor) overlaps whatever's above the box instead of filling it.
+anchor) overlaps whatever's above the box instead of filling it. The
+stamp text is vertically centered within whatever height you give it,
+so a tall-enough box centers the whole stamp automatically between
+surrounding lines - the small `margin` above adds a buffer so it never
+quite touches text directly above the box either.
 
 Use `color:#ffffff` (matched to a white background — adjust if yours
 isn't white), **not** `opacity:0`. Some PDF engines skip painting

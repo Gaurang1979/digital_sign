@@ -23,6 +23,7 @@ from pyhanko.sign.pkcs11 import PKCS11Signer, open_pkcs11_session
 from pyhanko.sign.signers.pdf_signer import PdfSignatureMetadata
 from pyhanko.stamp import TextStampStyle
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
+from pyhanko.pdf_utils.text import TextBoxStyle
 
 
 class SigningError(Exception):
@@ -226,6 +227,15 @@ def sign_pdf_bytes(
 		border_width=0,
 		background=PdfImage(tick_path) if os.path.exists(tick_path) else None,
 		background_opacity=background_opacity,
+		# Default font_size is 10, which with up to 5 lines enabled
+		# (signer/reason/location/date/certificate serial) needs ~60-70pt
+		# of height just for the text - overflows any reasonably compact
+		# stamp box and overlaps whatever sits above/below it in the print
+		# format. 7pt keeps all 5 lines legible while actually fitting
+		# a ~70-80pt-tall box. pyHanko vertically centers text within
+		# the box by default, so a tall-enough reserved HTML box centers
+		# the whole stamp automatically - no extra positioning needed.
+		text_box_style=TextBoxStyle(font_size=7, leading=8),
 	)
 	pdf_signer = signers.PdfSigner(meta, signer=signer, stamp_style=stamp_style)
 
