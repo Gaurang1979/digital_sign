@@ -312,10 +312,18 @@ def check_anchor_for_config(document_type, print_format, anchor_text):
 
 	last_render_error = None
 	for sample_name in sample_names:
+		# frappe.throw()/msgprint() inside Frappe's own print-rendering
+		# code (e.g. a PrintFormatError from a bad Jinja reference) queues
+		# the message for display as a side effect BEFORE raising -
+		# catching the exception below doesn't un-queue it, so without
+		# this it would still visibly surface to the user even though
+		# we're deliberately swallowing the actual error and retrying.
+		message_log_mark = len(frappe.local.message_log)
 		try:
 			pdf_bytes = get_pdf(frappe.get_print(document_type, sample_name, print_format=print_format))
 		except Exception as e:
 			last_render_error = e
+			del frappe.local.message_log[message_log_mark:]
 			continue  # this specific document's data tripped up the print format - try another
 
 		try:
