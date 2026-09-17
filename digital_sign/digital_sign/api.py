@@ -245,15 +245,21 @@ def revoke_signature(doctype, docname, reason=None):
 
 
 @frappe.whitelist()
-def download_pdf(doctype, name, format=None, doc=None, no_letterhead=0, letterhead=None, **kwargs):
-	"""Override for frappe.www.printview.download_pdf: serve the signed
+def download_pdf(doctype, name, format=None, doc=None, no_letterhead=0, letterhead=None, language=None, **kwargs):
+	"""Override for the "Download PDF" whitelisted call: serve the signed
 	PDF once one exists (and hasn't since been revoked), else fall
 	through to Frappe's own handler.
 
-	NOTE: confirm this signature matches your Frappe version --
+	The function itself moved from frappe.www.printview to
+	frappe.utils.print_format at some point in Frappe's history - the
+	*method name* the frontend actually calls (and that
+	override_whitelisted_methods in hooks.py keys on) stayed
+	frappe.www.printview.download_pdf, but the real implementation to
+	fall through to now lives at the newer path. If this breaks again on
+	a future Frappe version, confirm with:
 	  bench --site <site> console
-	  >>> import inspect, frappe.www.printview as pv
-	  >>> inspect.signature(pv.download_pdf)
+	  >>> import inspect, frappe.utils.print_format as pf
+	  >>> inspect.signature(pf.download_pdf)
 	"""
 	log = _latest_log(doctype, name)
 
@@ -263,7 +269,10 @@ def download_pdf(doctype, name, format=None, doc=None, no_letterhead=0, letterhe
 		frappe.local.response.type = "download"
 		return
 
-	from frappe.www.printview import download_pdf as original_download_pdf
+	try:
+		from frappe.utils.print_format import download_pdf as original_download_pdf
+	except ImportError:
+		from frappe.www.printview import download_pdf as original_download_pdf
 
 	return original_download_pdf(
 		doctype=doctype,
@@ -272,6 +281,7 @@ def download_pdf(doctype, name, format=None, doc=None, no_letterhead=0, letterhe
 		doc=doc,
 		no_letterhead=no_letterhead,
 		letterhead=letterhead,
+		language=language,
 		**kwargs,
 	)
 
