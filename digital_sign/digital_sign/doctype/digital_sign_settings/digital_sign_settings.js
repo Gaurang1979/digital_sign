@@ -56,9 +56,9 @@ function digital_sign_browse_certificates(frm) {
 						: `<span class="indicator-pill green">${__("Valid")}</span>`;
 					const kind = c.is_ca ? `<span class="text-muted small">${__("CA certificate")}</span>` : "";
 					return `<tr>
-						<td>${subject}${current}<br>${kind}</td>
-						<td>${serial}</td>
-						<td>${valid_until}</td>
+						<td style="word-break:break-word; white-space:normal;">${subject}${current}<br>${kind}</td>
+						<td style="word-break:break-word; white-space:normal;">${serial}</td>
+						<td style="white-space:normal;">${valid_until}</td>
 						<td>${status}</td>
 						<td><button class="btn btn-xs btn-default digital-sign-use-cert" data-cert-id="${frappe.utils.escape_html(c.id)}">${__("Use This")}</button></td>
 					</tr>`;
@@ -66,10 +66,19 @@ function digital_sign_browse_certificates(frm) {
 				.join("");
 
 			d.fields_dict.cert_list.$wrapper.html(`
-				<table class="table table-bordered">
-					<tr><th>${__("Subject")}</th><th>${__("Serial")}</th><th>${__("Valid Until")}</th><th>${__("Status")}</th><th></th></tr>
-					${rows}
-				</table>
+				<div style="overflow-x:auto; max-height:60vh; overflow-y:auto;">
+					<table class="table table-bordered" style="width:100%; table-layout:fixed;">
+						<colgroup>
+							<col style="width:38%;">
+							<col style="width:16%;">
+							<col style="width:20%;">
+							<col style="width:12%;">
+							<col style="width:14%;">
+						</colgroup>
+						<tr><th>${__("Subject")}</th><th>${__("Serial")}</th><th>${__("Valid Until")}</th><th>${__("Status")}</th><th></th></tr>
+						${rows}
+					</table>
+				</div>
 				<p class="text-muted small">${__("CA certificates are shown for reference only - you normally want your own end-entity certificate, not the issuer's.")}</p>
 			`);
 
