@@ -311,6 +311,7 @@ def check_anchor_for_config(document_type, print_format, anchor_text):
 		return {"checked": False, "message": _("No submitted {0} exists yet to test against.").format(document_type)}
 
 	last_render_error = None
+	last_traceback = None
 	for sample_name in sample_names:
 		# frappe.throw()/msgprint() inside Frappe's own print-rendering
 		# code (e.g. a PrintFormatError from a bad Jinja reference) queues
@@ -323,6 +324,11 @@ def check_anchor_for_config(document_type, print_format, anchor_text):
 			pdf_bytes = get_pdf(frappe.get_print(document_type, sample_name, print_format=print_format))
 		except Exception as e:
 			last_render_error = e
+			# frappe.get_traceback() only returns anything useful while
+			# still inside this except block (it reads Python's current
+			# exception context, sys.exc_info()) - capture it now, since
+			# calling it again after the loop ends returns nothing.
+			last_traceback = frappe.get_traceback()
 			del frappe.local.message_log[message_log_mark:]
 			continue  # this specific document's data tripped up the print format - try another
 
@@ -335,7 +341,7 @@ def check_anchor_for_config(document_type, print_format, anchor_text):
 
 	# Every sample we tried failed to even render - that's a Print Format
 	# problem, not something to block saving the signing config over.
-	frappe.log_error(frappe.get_traceback(), "Digital Sign: anchor pre-check render failed")
+	frappe.log_error(last_traceback or str(last_render_error), "Digital Sign: anchor pre-check render failed")
 	return {
 		"checked": False,
 		"message": _(
