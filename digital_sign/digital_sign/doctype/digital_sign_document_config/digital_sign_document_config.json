@@ -6,6 +6,8 @@
  "engine": "InnoDB",
  "field_order": [
   "document_type",
+  "section_break_roles",
+  "allowed_roles",
   "section_break_templates",
   "templates"
  ],
@@ -18,6 +20,18 @@
    "options": "DocType",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "section_break_roles",
+   "fieldtype": "Section Break",
+   "label": "Who Can Sign"
+  },
+  {
+   "fieldname": "allowed_roles",
+   "fieldtype": "Table MultiSelect",
+   "label": "Allowed Roles",
+   "options": "Digital Sign Role",
+   "description": "Shared across every template below - Table MultiSelect fields don't work reliably when nested inside a child table (a longstanding Frappe limitation), so this lives on the DocType-level config instead of per-template."
   },
   {
    "fieldname": "section_break_templates",

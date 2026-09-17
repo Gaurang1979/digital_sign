@@ -12,8 +12,13 @@ def boot_session(bootinfo):
 
 def get_config():
 	"""{doctype: [template, template, ...]} - a DocType can have more than
-	one signing template (different Print Formats), stored as rows in
-	one Digital Sign Document Config's child table."""
+	one signing template (different Print Formats), stored as rows in one
+	Digital Sign Document Config's Templates table. Allowed Roles lives on
+	the parent (shared across every template for that doctype) rather than
+	per-template - Table MultiSelect fields don't work reliably nested
+	inside a child table, a longstanding Frappe limitation - but every
+	template dict still carries its own allowed_roles key so api.py and
+	the frontend don't need to know that."""
 	if not frappe.db.get_single_value("Digital Sign Settings", "enabled"):
 		return {}
 
@@ -21,6 +26,12 @@ def get_config():
 
 	result = {}
 	for cfg in configs:
+		roles = frappe.get_all(
+			"Digital Sign Role",
+			filters={"parent": cfg.name, "parenttype": "Digital Sign Document Config"},
+			pluck="role",
+		)
+
 		rows = frappe.get_all(
 			"Digital Sign Print Template",
 			filters={"parent": cfg.name, "parenttype": "Digital Sign Document Config", "enabled": 1},
@@ -29,23 +40,16 @@ def get_config():
 		if not rows:
 			continue
 
-		templates = []
-		for row in rows:
-			roles = frappe.get_all(
-				"Digital Sign Role",
-				filters={"parent": row.name, "parenttype": "Digital Sign Print Template"},
-				pluck="role",
-			)
-			templates.append(
-				{
-					"config_name": row.name,
-					"anchor_text": row.anchor_text,
-					"print_format": row.print_format,
-					"width": row.width or 150,
-					"height": row.height or 50,
-					"allowed_roles": roles,
-				}
-			)
-		if templates:
-			result[cfg.document_type] = templates
+		templates = [
+			{
+				"config_name": row.name,
+				"anchor_text": row.anchor_text,
+				"print_format": row.print_format,
+				"width": row.width or 150,
+				"height": row.height or 50,
+				"allowed_roles": roles,
+			}
+			for row in rows
+		]
+		result[cfg.document_type] = templates
 	return result

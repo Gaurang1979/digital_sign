@@ -8,6 +8,12 @@ Digital Sign Print Template child-table row per Print Format" - lets
 someone actually see and add multiple templates for the same DocType in
 one place instead of hunting for a second top-level document to create.
 
+Allowed Roles moves from per-template to the parent (shared across every
+template for that doctype) - Table MultiSelect fields don't work
+reliably nested inside a child table (a longstanding Frappe limitation:
+https://github.com/frappe/frappe/issues/23307), which is exactly what
+per-template roles would have been.
+
 Runs post_model_sync so the new templates/Digital Sign Print Template
 schema already exists to write into. Reads the old flat columns via raw
 SQL, since by this point the DocType's own meta no longer declares them
@@ -48,13 +54,6 @@ def execute():
 	for row in old_rows:
 		by_doctype.setdefault(row.document_type, []).append(row)
 
-	# The Digital Sign Print Template doctype was just created by this
-	# same migrate run's schema sync - post_model_sync guarantees its
-	# table exists, but Frappe's in-memory meta cache doesn't auto-refresh
-	# mid-process for a doctype introduced in that same run. Without this,
-	# parent.append("templates", {}) / child.append("allowed_roles", {})
-	# below fail with AttributeError, since _init_child can't find fields
-	# on a doctype it doesn't yet know exists.
 	frappe.reload_doctype("Digital Sign Document Config", force=True)
 	frappe.reload_doctype("Digital Sign Print Template", force=True)
 	frappe.reload_doctype("Digital Sign Role", force=True)
@@ -68,6 +67,17 @@ def execute():
 	for document_type, rows in by_doctype.items():
 		parent = frappe.new_doc("Digital Sign Document Config")
 		parent.document_type = document_type
+
+		# Union of every old row's roles for this doctype - the new shape
+		# has one shared Allowed Roles list per DocType, not per template.
+		combined_roles = []
+		for row in rows:
+			for role in old_roles.get(row.name, []):
+				if role not in combined_roles:
+					combined_roles.append(role)
+		for role in combined_roles:
+			parent.append("allowed_roles", {"role": role})
+
 		for row in rows:
 			child = parent.append("templates", {})
 			child.enabled = row.enabled
@@ -75,8 +85,7 @@ def execute():
 			child.anchor_text = row.anchor_text
 			child.width = row.width
 			child.height = row.height
-			for role in old_roles.get(row.name, []):
-				child.append("allowed_roles", {"role": role})
+
 		# Skip the (now much heavier, per-row PDF-rendering) validate()
 		# during a bulk migration - the data is coming straight from
 		# already-working rows, nothing new to verify.

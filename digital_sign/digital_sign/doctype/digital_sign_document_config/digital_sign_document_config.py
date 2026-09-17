@@ -6,6 +6,7 @@ from frappe.model.document import Document
 class DigitalSignDocumentConfig(Document):
 	def validate(self):
 		self._validate_submittable()
+		self._validate_has_roles()
 		self._validate_templates()
 
 	def _validate_submittable(self):
@@ -14,6 +15,11 @@ class DigitalSignDocumentConfig(Document):
 		is_submittable = frappe.db.get_value("DocType", self.document_type, "is_submittable")
 		if not is_submittable:
 			frappe.throw(_("{0} is not a submittable DocType, so it cannot be digitally signed.").format(self.document_type))
+
+	def _validate_has_roles(self):
+		has_enabled_template = any(row.enabled for row in self.templates)
+		if has_enabled_template and not self.allowed_roles:
+			frappe.throw(_("Add at least one Allowed Role - otherwise nobody will be able to sign {0}.").format(self.document_type))
 
 	def _validate_templates(self):
 		seen_print_formats = set()
@@ -26,13 +32,6 @@ class DigitalSignDocumentConfig(Document):
 					)
 				)
 			seen_print_formats.add(row.print_format)
-
-			if not row.allowed_roles:
-				frappe.throw(
-					_("Row {0} ({1}): add at least one Allowed Role - otherwise nobody will be able to sign with this template.").format(
-						row.idx, row.print_format
-					)
-				)
 
 			self._validate_anchor_present(row)
 
