@@ -1,4 +1,5 @@
 import base64
+import inspect
 
 import frappe
 from frappe import _
@@ -298,16 +299,29 @@ def download_pdf(doctype, name, format=None, doc=None, no_letterhead=0, letterhe
 	except ImportError:
 		from frappe.www.printview import download_pdf as original_download_pdf
 
-	return original_download_pdf(
-		doctype=doctype,
-		name=name,
-		format=format,
-		doc=doc,
-		no_letterhead=no_letterhead,
-		letterhead=letterhead,
-		language=language,
+	# The real function has a fixed signature (no **kwargs catch-all), so
+	# blindly forwarding everything Frappe's frontend sent (settings,
+	# pdf_generator, _lang, etc.) crashes with "unexpected keyword
+	# argument" the moment the request includes anything outside that
+	# exact list. Introspect its actual signature and only pass what it
+	# declares - adapts automatically to whichever Frappe version is
+	# running instead of hardcoding one fixed parameter list. Anything
+	# dropped here is still available to it via frappe.form_dict directly
+	# if it needs it internally.
+	all_args = {
+		"doctype": doctype,
+		"name": name,
+		"format": format,
+		"doc": doc,
+		"no_letterhead": no_letterhead,
+		"letterhead": letterhead,
+		"language": language,
 		**kwargs,
-	)
+	}
+	accepted_params = set(inspect.signature(original_download_pdf).parameters)
+	call_args = {k: v for k, v in all_args.items() if k in accepted_params}
+
+	return original_download_pdf(**call_args)
 
 
 @frappe.whitelist()
