@@ -52,7 +52,7 @@ for every template regardless of what size each one's HTML actually
 uses; nothing needs to be typed into two places to match:
 
 ```html
-<div style="width:160px; height:40px; color:#ffffff; overflow:hidden;">##DIGITAL_SIGN_ANCHOR:160x40##</div>
+<div style="width:160px; height:80px; color:#ffffff; overflow:hidden; margin:4px 0;">##DIGITAL_SIGN_ANCHOR:160x80##</div>
 ```
 
 A plain block-level `div` with explicit width/height - no
@@ -64,27 +64,28 @@ engines - wkhtmltopdf specifically - don't reliably reserve space for;
 if a stamp has overlapped or drifted to the wrong spot, switch to this
 plain `div` instead.)
 
-There's no hidden default forcing a particular height - `160x40` above
-is just an example. With every stamp field enabled in Settings (signer
-name, reason, location, date, certificate serial) that's up to 5 lines
-of text at 7pt, needing something like 70-80pt tall to stay legible;
-with fewer fields enabled, a shorter box works fine. Leaving off the
-`:WxH` suffix entirely (plain `##DIGITAL_SIGN_ANCHOR##`) falls back to
-160x80 automatically - the signing code detects whichever variant is
-actually rendered on the page, purely from the HTML, every time.
+**The height in `:WxH` is an upper bound, not a forced size.** The
+stamp is drawn tight to however many lines are actually enabled in
+Settings (signer name, reason, location, date, certificate serial) -
+with fewer fields enabled it renders shorter than the declared height,
+with no empty top/bottom padding added just because more room was
+declared than the content needs. It only uses the full declared height
+if the content genuinely can't fit any shorter (shrinking the font
+rather than overflowing). Any breathing room you want around the
+stamp - like the `margin:4px 0;` above - is yours to add in the HTML;
+nothing is added automatically. Leaving off the `:WxH` suffix entirely
+(plain `##DIGITAL_SIGN_ANCHOR##`) falls back to 160x80 as the upper
+bound - the signing code detects whichever variant is actually
+rendered on the page, purely from the HTML, every time.
 
-**Keep the `div`'s own `width`/`height` matching the number in the
-anchor text exactly** - the `div` reserves the layout space, and the
-anchor text tells the signing code how big to actually draw the stamp;
-if the two disagree, the stamp will be sized correctly but may not fit
-the space you reserved for it.
+**Keep the `div`'s own `width` matching the number in the anchor text**
+- `height` can safely be generous now (it's just an upper bound), but
+`width` is used as-is for the stamp's actual drawn width.
 
 The stamp is drawn extending **downward-right** from exactly where the
-anchor text sits (its top-left corner), filling the box below and
-right of it. The stamp content (text and the tick background) is
-centered both directions within that box automatically
-- the small `margin` above adds a buffer so it never quite touches
-text directly above the box either.
+anchor text sits (its top-left corner), filling only as much of the
+box as its content actually needs. The stamp content is centered
+horizontally within its width automatically.
 
 Use `color:#ffffff` (matched to a white background — adjust if yours
 isn't white), **not** `opacity:0`. Some PDF engines skip painting

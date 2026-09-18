@@ -295,27 +295,47 @@ def build_stamp_text(settings, reason: str, location: str, cert_info: dict) -> s
 	return "\n".join(lines) if lines else f"Digitally signed by: {settings.signer_name or ''}"
 
 
-def _fit_text_box_style(stamp_text: str, height: float) -> TextBoxStyle:
-	"""Scales font size/leading down so stamp_text always fits within
-	height, regardless of how many stamp fields (signer/reason/location/
-	date/certificate serial - configurable in Digital Sign Settings) end
-	up enabled. A fixed font size that happens to fit 5 lines in an 80pt
-	box will genuinely overflow a shorter box someone declares in their
-	HTML, or look unnecessarily cramped in a taller one with fewer
-	lines - this makes the box height in the HTML the actual, reliable
-	constraint instead of a fixed guess.
+def _fit_stamp_box(stamp_text: str, declared_height: float):
+	"""Computes the stamp's actual drawn height and text styling so it
+	renders TIGHT to its actual content - no top/bottom padding or
+	centering slack left over just because the HTML declared more space
+	than the current number of enabled stamp fields (signer/reason/
+	location/date/certificate serial - Digital Sign Settings) actually
+	needs.
 
-	Bounded between 4pt (smallest still-legible size) and 8pt, so it
-	never gets absurdly large for a tall box with only one line either.
+	declared_height (from the HTML's :WxH) acts purely as an upper
+	bound: if the content needs less than that, the stamp is drawn at
+	its own tight-fit height instead of stretched/centered to fill the
+	full declared space. If it needs more, the font shrinks until it
+	fits within declared_height (can't exceed what's declared). Any
+	breathing room around the stamp - top, bottom, or between it and
+	surrounding content - is left entirely to the HTML's own margin;
+	nothing is added here.
+
+	Returns (text_box_style, actual_height) - actual_height is what
+	sign_pdf_bytes should use for the stamp's own box, not
+	declared_height directly.
 	"""
 	num_lines = stamp_text.count("\n") + 1
-	# text_sep (pyHanko's own internal padding inside the box, default
-	# 10) eats into the usable height - leave room for it rather than
-	# assuming the full declared height is available for text lines.
-	available = max(height - 10, num_lines * 4)
-	leading = max(min(8, available / num_lines), 4)
-	font_size = max(leading - 1, 3)
-	return TextBoxStyle(font_size=font_size, leading=leading)
+	leading, font_size = 8, 7  # compact, legible default
+
+	tight_height = num_lines * leading
+	if tight_height <= declared_height:
+		# Fits comfortably at the default size - draw at exactly the
+		# tight-fit height, not the (possibly larger) declared one.
+		actual_height = tight_height
+	else:
+		# More lines than declared_height comfortably fits at the
+		# default size - shrink the font until it does. This is the one
+		# case where the drawn height can't be smaller than what's
+		# declared, since the content genuinely needs that much room.
+		leading = max(declared_height / num_lines, 4)
+		font_size = max(leading - 1, 3)
+		actual_height = declared_height
+
+	# text_sep=0: pyHanko's own internal padding inside the box
+	# (default 10) is exactly the kind of extra space being removed here.
+	return TextBoxStyle(font_size=font_size, leading=leading, text_sep=0), actual_height
 
 
 def sign_pdf_bytes(
@@ -335,16 +355,22 @@ def sign_pdf_bytes(
 	page/coordinates. Returns the signed PDF bytes.
 
 	(x, y) is the TOP-left corner of the stamp box - it extends
-	downward-right from there (down by height, right by width), matching
-	where an anchor naturally sits right after a line of text in the
-	HTML (immediately below that line), rather than needing empty space
-	reserved above it.
+	downward-right from there, matching where an anchor naturally sits
+	right after a line of text in the HTML (immediately below that
+	line). height is an UPPER BOUND, not the drawn height: the stamp is
+	actually drawn tight to however many lines stamp_text has (via
+	_fit_stamp_box()), so it doesn't render with empty top/bottom space
+	just because height declared more room than the current content
+	needs - any breathing room is expected to come from the HTML's own
+	margin around the reserved box, not from padding added here.
 
 	reason/location go into the signature's PDF metadata (what Adobe's
 	signature-properties panel shows); stamp_text controls what is
 	visually printed inside the stamp box, with a green tick watermark
 	behind it at background_opacity (0-1, from Digital Sign Settings).
 	"""
+	text_box_style, actual_height = _fit_stamp_box(stamp_text, height)
+
 	writer = IncrementalPdfFileWriter(io.BytesIO(pdf_bytes))
 
 	field_name = "DigitalSignature"
@@ -353,7 +379,7 @@ def sign_pdf_bytes(
 		fields.SigFieldSpec(
 			sig_field_name=field_name,
 			on_page=max(page - 1, 0),
-			box=(x, y - height, x + width, y),
+			box=(x, y - actual_height, x + width, y),
 		),
 	)
 
@@ -369,20 +395,17 @@ def sign_pdf_bytes(
 		border_width=0,
 		background=PdfImage(tick_path) if os.path.exists(tick_path) else None,
 		background_opacity=background_opacity,
-		# Font size/leading dynamically scaled to guarantee stamp_text
-		# fits within height regardless of how many stamp fields are
-		# enabled - see _fit_text_box_style(). pyHanko vertically centers
-		# text within the box by default, so a tall-enough reserved HTML
-		# box centers the whole stamp automatically - no extra
-		# positioning needed.
-		text_box_style=_fit_text_box_style(stamp_text, height),
+		# text_box_style, actual_height computed together above by
+		# _fit_stamp_box() - the box itself is now sized tight to the
+		# content (actual_height), so there's no leftover top/bottom
+		# space for centering to distribute in the first place.
+		text_box_style=text_box_style,
 		# Centers the inner text box (as a block) within the full stamp
-		# box horizontally and vertically - the box itself is exactly
-		# (width, height) from the anchor text, so this keeps the stamp
-		# content centered within that box rather than pinned to a
-		# corner. background_layout defaults to the same MID/MID
-		# centering already, so the tick watermark and the text block
-		# both center consistently.
+		# box horizontally - width still comes from the HTML as
+		# declared, so this keeps short lines centered within that width
+		# rather than pinned to the left edge. background_layout
+		# defaults to the same MID/MID centering, so the tick watermark
+		# centers consistently too.
 		inner_content_layout=SimpleBoxLayoutRule(x_align=AxisAlignment.ALIGN_MID, y_align=AxisAlignment.ALIGN_MID),
 	)
 	pdf_signer = signers.PdfSigner(meta, signer=signer, stamp_style=stamp_style)
