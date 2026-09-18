@@ -188,7 +188,11 @@ DEFAULT_STAMP_HEIGHT = 80
 def locate_anchor(pdf_bytes: bytes, anchor_text: str):
 	"""Find anchor_text in the rendered PDF; return (page_index, x, y,
 	width, height) in PDF user-space points (origin bottom-left) for the
-	stamp's bottom-left corner and size.
+	stamp's TOP-left corner and size - the stamp is drawn extending
+	downward-right from (x, y), matching where an anchor naturally sits
+	right after a line of text in the HTML (immediately below that
+	line), so the HTML anchor should be styled with top:0 (not bottom:0)
+	within its reserved box. See sign_pdf_bytes() for the box math.
 
 	Size is optional and lives ENTIRELY in the Print Format's own HTML -
 	nothing needs to be typed into anchor_text (the Digital Sign Print
@@ -241,7 +245,12 @@ def locate_anchor(pdf_bytes: bytes, anchor_text: str):
 				if matches:
 					rect = matches[0]
 					# fitz rects are top-down; flip to PDF bottom-up space.
-					return page_index, rect.x0, page.rect.height - rect.y1, width, height
+					# rect.y0 (not y1) - the TOP of the anchor text's own
+					# glyphs - since the stamp now extends downward-right
+					# from this point, matching an anchor styled with
+					# top:0 within its reserved box (see locate_anchor's
+					# own docstring and sign_pdf_bytes for why).
+					return page_index, rect.x0, page.rect.height - rect.y0, width, height
 
 		raise SigningError(
 			f"Anchor text '{anchor_text}' was not found in the rendered print format. "
@@ -302,6 +311,12 @@ def sign_pdf_bytes(
 	"""Embed a visible, cryptographic (PAdES) signature at the given
 	page/coordinates. Returns the signed PDF bytes.
 
+	(x, y) is the TOP-left corner of the stamp box - it extends
+	downward-right from there (down by height, right by width), matching
+	where an anchor naturally sits right after a line of text in the
+	HTML (immediately below that line), rather than needing empty space
+	reserved above it.
+
 	reason/location go into the signature's PDF metadata (what Adobe's
 	signature-properties panel shows); stamp_text controls what is
 	visually printed inside the stamp box, with a green tick watermark
@@ -315,7 +330,7 @@ def sign_pdf_bytes(
 		fields.SigFieldSpec(
 			sig_field_name=field_name,
 			on_page=max(page - 1, 0),
-			box=(x, y, x + width, y + height),
+			box=(x, y - height, x + width, y),
 		),
 	)
 

@@ -53,7 +53,7 @@ uses; nothing needs to be typed into two places to match:
 
 ```html
 <div style="display:inline-block; position:relative; width:160px; height:80px; margin:4px 0;">
-  <span style="color:#ffffff; position:absolute; left:0; bottom:0;">##DIGITAL_SIGN_ANCHOR:160x80##</span>
+  <span style="color:#ffffff; position:absolute; left:0; top:0;">##DIGITAL_SIGN_ANCHOR:160x80##</span>
 </div>
 ```
 
@@ -73,13 +73,16 @@ the signing code how big to actually draw the stamp; if the two
 disagree, the stamp will be sized correctly but may not fit the space
 you reserved for it.
 
-The stamp's bottom-left corner is placed exactly where the anchor
-*text* sits - not just anywhere inside the wrapper `div` - so
-`position:absolute; left:0; bottom:0;` matters: without it, the anchor
-sits at the div's top by default and the stamp (which extends
-upward-right from the anchor) overlaps whatever's above the box
-instead of filling it. The stamp content (text and the tick
-background) is centered both directions within that box automatically
+The stamp is drawn extending **downward-right** from exactly where the
+anchor *text* sits - not just anywhere inside the wrapper `div` - so
+`position:absolute; left:0; top:0;` matters: it pins the anchor to the
+box's own top-left corner, so the stamp fills downward into the
+reserved box instead of needing space reserved *above* the anchor
+(some PDF engines don't reliably reserve space above an anchor sitting
+right after a line of text, which caused overlap with earlier
+top:0-less or bottom:0-anchored HTML). The stamp content (text and the
+tick background) is centered both directions within that box
+automatically
 - the small `margin` above adds a buffer so it never quite touches
 text directly above the box either.
 
