@@ -333,9 +333,12 @@ def _fit_stamp_box(stamp_text: str, declared_height: float):
 		font_size = max(leading - 1, 3)
 		actual_height = declared_height
 
-	# text_sep=0: pyHanko's own internal padding inside the box
-	# (default 10) is exactly the kind of extra space being removed here.
-	return TextBoxStyle(font_size=font_size, leading=leading, text_sep=0), actual_height
+	# No text_sep here - that parameter existed in old pyHanko (<=0.5.1)
+	# but was removed by 0.11.0+ in favor of margins on the layout rule
+	# instead (SimpleBoxLayoutRule.margins, used by inner_content_layout
+	# below) - and that already defaults to zero on every side, so the
+	# zero-padding behaviour wanted here needs no explicit setting at all.
+	return TextBoxStyle(font_size=font_size, leading=leading), actual_height
 
 
 def sign_pdf_bytes(
@@ -405,7 +408,10 @@ def sign_pdf_bytes(
 		# declared, so this keeps short lines centered within that width
 		# rather than pinned to the left edge. background_layout
 		# defaults to the same MID/MID centering, so the tick watermark
-		# centers consistently too.
+		# centers consistently too. SimpleBoxLayoutRule.margins defaults
+		# to zero on every side (confirmed against pyHanko's own docs),
+		# so this also already gives the zero internal padding wanted -
+		# no separate setting needed for that.
 		inner_content_layout=SimpleBoxLayoutRule(x_align=AxisAlignment.ALIGN_MID, y_align=AxisAlignment.ALIGN_MID),
 	)
 	pdf_signer = signers.PdfSigner(meta, signer=signer, stamp_style=stamp_style)
