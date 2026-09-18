@@ -188,11 +188,12 @@ DEFAULT_STAMP_HEIGHT = 80
 def locate_anchor(pdf_bytes: bytes, anchor_text: str):
 	"""Find anchor_text in the rendered PDF; return (page_index, x, y,
 	width, height) in PDF user-space points (origin bottom-left) for the
-	stamp's TOP-left corner and size - the stamp is drawn extending
-	downward-right from (x, y), matching where an anchor naturally sits
-	right after a line of text in the HTML (immediately below that
-	line), so the HTML anchor should be styled with top:0 (not bottom:0)
-	within its reserved box. See sign_pdf_bytes() for the box math.
+	stamp's CENTRE-left point and size - the stamp is drawn expanding
+	equally upward and downward from (x, y) (up by height/2, down by
+	height/2), so wherever the anchor naturally lands in the HTML, the
+	stamp centres on it rather than needing empty space reserved
+	specifically above or specifically below. See sign_pdf_bytes() for
+	the box math.
 
 	Size is optional and lives ENTIRELY in the Print Format's own HTML -
 	nothing needs to be typed into anchor_text (the Digital Sign Print
@@ -244,13 +245,12 @@ def locate_anchor(pdf_bytes: bytes, anchor_text: str):
 				matches = page.search_for(candidate)
 				if matches:
 					rect = matches[0]
-					# fitz rects are top-down; flip to PDF bottom-up space.
-					# rect.y0 (not y1) - the TOP of the anchor text's own
-					# glyphs - since the stamp now extends downward-right
-					# from this point, matching an anchor styled with
-					# top:0 within its reserved box (see locate_anchor's
-					# own docstring and sign_pdf_bytes for why).
-					return page_index, rect.x0, page.rect.height - rect.y0, width, height
+					# fitz rects are top-down; flip to PDF bottom-up
+					# space. Midpoint of the anchor text's own glyph
+					# rect (not its top or bottom edge) - the stamp
+					# expands symmetrically from this centre point.
+					mid_y_topdown = (rect.y0 + rect.y1) / 2
+					return page_index, rect.x0, page.rect.height - mid_y_topdown, width, height
 
 		raise SigningError(
 			f"Anchor text '{anchor_text}' was not found in the rendered print format. "
@@ -295,7 +295,7 @@ def build_stamp_text(settings, reason: str, location: str, cert_info: dict) -> s
 	return "\n".join(lines) if lines else f"Digitally signed by: {settings.signer_name or ''}"
 
 
-def _fit_stamp_box(stamp_text: str, declared_height: float):
+def _fit_stamp_box(stamp_text: str, declared_height: float, base_font_size: float = 7, base_leading: float = 8):
 	"""Computes the stamp's actual drawn height and text styling so it
 	renders TIGHT to its actual content - no top/bottom padding or
 	centering slack left over just because the HTML declared more space
@@ -303,13 +303,19 @@ def _fit_stamp_box(stamp_text: str, declared_height: float):
 	location/date/certificate serial - Digital Sign Settings) actually
 	needs.
 
+	base_font_size/base_leading come from Digital Sign Settings (Stamp
+	Font Size / Stamp Line Spacing) - the admin's own direct control
+	over how the stamp text looks, rather than a fixed value baked into
+	this code.
+
 	declared_height (from the HTML's :WxH) acts purely as an upper
-	bound: if the content needs less than that, the stamp is drawn at
-	its own tight-fit height instead of stretched/centered to fill the
-	full declared space. If it needs more, the font shrinks until it
-	fits within declared_height (can't exceed what's declared). Any
-	breathing room around the stamp - top, bottom, or between it and
-	surrounding content - is left entirely to the HTML's own margin;
+	bound: if the content needs less than that at base_font_size, the
+	stamp is drawn at its own tight-fit height instead of stretched/
+	centered to fill the full declared space. If it needs more, the
+	font shrinks below base_font_size until it fits within
+	declared_height (can't exceed what's declared). Any breathing room
+	around the stamp - top, bottom, or between it and surrounding
+	content - is left entirely to the HTML's own margin/spacing;
 	nothing is added here.
 
 	Returns (text_box_style, actual_height) - actual_height is what
@@ -317,17 +323,17 @@ def _fit_stamp_box(stamp_text: str, declared_height: float):
 	declared_height directly.
 	"""
 	num_lines = stamp_text.count("\n") + 1
-	leading, font_size = 8, 7  # compact, legible default
+	leading, font_size = base_leading, base_font_size
 
 	tight_height = num_lines * leading
 	if tight_height <= declared_height:
-		# Fits comfortably at the default size - draw at exactly the
+		# Fits comfortably at the configured size - draw at exactly the
 		# tight-fit height, not the (possibly larger) declared one.
 		actual_height = tight_height
 	else:
 		# More lines than declared_height comfortably fits at the
-		# default size - shrink the font until it does. This is the one
-		# case where the drawn height can't be smaller than what's
+		# configured size - shrink the font until it does. This is the
+		# one case where the drawn height can't be smaller than what's
 		# declared, since the content genuinely needs that much room.
 		leading = max(declared_height / num_lines, 4)
 		font_size = max(leading - 1, 3)
@@ -353,26 +359,35 @@ def sign_pdf_bytes(
 	reason: str = "",
 	location: str = "",
 	background_opacity: float = 0.5,
+	font_size: float = 7,
+	line_spacing: float = 8,
 ) -> bytes:
 	"""Embed a visible, cryptographic (PAdES) signature at the given
 	page/coordinates. Returns the signed PDF bytes.
 
-	(x, y) is the TOP-left corner of the stamp box - it extends
-	downward-right from there, matching where an anchor naturally sits
-	right after a line of text in the HTML (immediately below that
-	line). height is an UPPER BOUND, not the drawn height: the stamp is
-	actually drawn tight to however many lines stamp_text has (via
-	_fit_stamp_box()), so it doesn't render with empty top/bottom space
+	(x, y) is the CENTRE-left point of the stamp box - it expands
+	symmetrically up and down from there (up by actual_height/2, down
+	by actual_height/2), matching wherever an anchor naturally lands in
+	the HTML, so the stamp centres on that point instead of needing
+	empty space reserved specifically above or specifically below it.
+	height is an UPPER BOUND on that expansion, not the drawn height:
+	the stamp is actually drawn tight to however many lines stamp_text
+	has (via _fit_stamp_box()), so it doesn't render with empty space
 	just because height declared more room than the current content
 	needs - any breathing room is expected to come from the HTML's own
-	margin around the reserved box, not from padding added here.
+	spacing around the anchor, not from padding added here.
+
+	font_size/line_spacing (Digital Sign Settings: Stamp Font Size /
+	Stamp Line Spacing) are the admin's own direct control over the
+	stamp text's size - _fit_stamp_box() only shrinks below these if the
+	content genuinely doesn't fit within height at that size.
 
 	reason/location go into the signature's PDF metadata (what Adobe's
 	signature-properties panel shows); stamp_text controls what is
 	visually printed inside the stamp box, with a green tick watermark
 	behind it at background_opacity (0-1, from Digital Sign Settings).
 	"""
-	text_box_style, actual_height = _fit_stamp_box(stamp_text, height)
+	text_box_style, actual_height = _fit_stamp_box(stamp_text, height, font_size, line_spacing)
 
 	writer = IncrementalPdfFileWriter(io.BytesIO(pdf_bytes))
 
@@ -382,7 +397,7 @@ def sign_pdf_bytes(
 		fields.SigFieldSpec(
 			sig_field_name=field_name,
 			on_page=max(page - 1, 0),
-			box=(x, y - actual_height, x + width, y),
+			box=(x, y - actual_height / 2, x + width, y + actual_height / 2),
 		),
 	)
 

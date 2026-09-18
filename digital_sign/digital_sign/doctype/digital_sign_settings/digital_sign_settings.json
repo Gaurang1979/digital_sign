@@ -32,6 +32,9 @@
   "include_location",
   "column_break_4",
   "include_certificate_serial",
+  "column_break_5",
+  "stamp_font_size",
+  "stamp_line_spacing",
   "custom_stamp_text",
   "stamp_background_opacity"
  ],
@@ -187,6 +190,24 @@
    "fieldname": "include_certificate_serial",
    "fieldtype": "Check",
    "label": "Include Certificate Serial"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "stamp_font_size",
+   "fieldtype": "Int",
+   "label": "Stamp Font Size",
+   "default": "7",
+   "description": "Points. The stamp shrinks below this automatically if the content needs more lines than the reserved space in the HTML fits - this is the starting/maximum size, not a guarantee."
+  },
+  {
+   "fieldname": "stamp_line_spacing",
+   "fieldtype": "Int",
+   "label": "Stamp Line Spacing",
+   "default": "8",
+   "description": "Points between each line of the stamp (leading). Usually 1-2pt more than Stamp Font Size."
   },
   {
    "description": "Optional. If filled, overrides the checkboxes and is used verbatim. Placeholders: {signer_name} {date} {reason} {location} {certificate_serial}",

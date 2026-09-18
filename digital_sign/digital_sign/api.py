@@ -211,6 +211,8 @@ def sign_document(doctype, docname, config_name=None):
 			reason=reason,
 			location=location,
 			background_opacity=(settings.stamp_background_opacity or 50) / 100,
+			font_size=settings.stamp_font_size or 7,
+			line_spacing=settings.stamp_line_spacing or 8,
 		)
 	except SigningError as e:
 		frappe.throw(str(e))

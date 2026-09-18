@@ -43,49 +43,48 @@ Built and verified against: Hypersecu HYP2003 token, Capricorn DSC
 ## Signature placement
 
 You do **not** touch individual documents. Add an invisible anchor to
-the **Print Format template** once, sized to reserve the same space
-the stamp will actually take up (otherwise the stamp overlaps whatever
-content already sits there). Size lives entirely in the Print Format's
-HTML, not in the Anchor Text field on Digital Sign Print Template -
-that field can stay at its plain default (`##DIGITAL_SIGN_ANCHOR##`)
-for every template regardless of what size each one's HTML actually
-uses; nothing needs to be typed into two places to match:
+the **Print Format template** once. Size lives entirely in the Print
+Format's HTML, not in the Anchor Text field on Digital Sign Print
+Template - that field can stay at its plain default
+(`##DIGITAL_SIGN_ANCHOR##`) for every template regardless of what size
+each one's HTML actually uses; nothing needs to be typed into two
+places to match:
 
 ```html
-<div style="width:160px; height:80px; color:#ffffff; overflow:hidden; margin:4px 0;">##DIGITAL_SIGN_ANCHOR:160x80##</div>
+<div>For, Company Name</div>
+<br><br>
+##DIGITAL_SIGN_ANCHOR:160x60##
+<br><br>
+<div>Authorised Signatory</div>
 ```
 
-A plain block-level `div` with explicit width/height - no
-`position:absolute`, no `inline-block` - reliably reserves that much
-space in the page's normal layout flow, and the anchor text sits at
-its top-left by default with no extra positioning needed. (An earlier
-version of this guidance used `position:absolute`, which some PDF
-engines - wkhtmltopdf specifically - don't reliably reserve space for;
-if a stamp has overlapped or drifted to the wrong spot, switch to this
-plain `div` instead.)
+**The stamp centres on the anchor and expands equally up and down from
+it** - put roughly equal `<br>` tags both above and below the anchor,
+not all on one side. Plain `<br>` line breaks reserve space far more
+reliably than a `div` with a declared `height`: some PDF engines
+(wkhtmltopdf specifically) don't reliably respect an explicit `height`
+on a block element, even a plain one with no special positioning -
+confirmed directly by inspecting a signed PDF's actual coordinates,
+where a declared height was consistently ignored. A `<br>` has no CSS
+property to ignore; each one reserves roughly one line's worth of
+space at your font size. Add or remove them to adjust the gap.
 
 **The height in `:WxH` is an upper bound, not a forced size.** The
 stamp is drawn tight to however many lines are actually enabled in
-Settings (signer name, reason, location, date, certificate serial) -
-with fewer fields enabled it renders shorter than the declared height,
-with no empty top/bottom padding added just because more room was
-declared than the content needs. It only uses the full declared height
-if the content genuinely can't fit any shorter (shrinking the font
-rather than overflowing). Any breathing room you want around the
-stamp - like the `margin:4px 0;` above - is yours to add in the HTML;
-nothing is added automatically. Leaving off the `:WxH` suffix entirely
+Settings (signer name, reason, location, date, certificate serial), at
+whatever size **Stamp Font Size** / **Stamp Line Spacing** (also in
+Digital Sign Settings, right below those checkboxes) specify - your
+own direct control over how big the stamp text renders, rather than a
+fixed size baked into the code. It only uses the full declared height
+if the content genuinely can't fit any shorter at that size (shrinking
+the font as a last resort). Leaving off the `:WxH` suffix entirely
 (plain `##DIGITAL_SIGN_ANCHOR##`) falls back to 160x80 as the upper
 bound - the signing code detects whichever variant is actually
 rendered on the page, purely from the HTML, every time.
 
-**Keep the `div`'s own `width` matching the number in the anchor text**
-- `height` can safely be generous now (it's just an upper bound), but
-`width` is used as-is for the stamp's actual drawn width.
-
-The stamp is drawn extending **downward-right** from exactly where the
-anchor text sits (its top-left corner), filling only as much of the
-box as its content actually needs. The stamp content is centered
-horizontally within its width automatically.
+**Keep the width matching the number in the anchor text** - width is
+used as-is for the stamp's actual drawn width; height is just the
+ceiling.
 
 Use `color:#ffffff` (matched to a white background — adjust if yours
 isn't white), **not** `opacity:0`. Some PDF engines skip painting
