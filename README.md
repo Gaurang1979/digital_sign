@@ -45,9 +45,11 @@ Built and verified against: Hypersecu HYP2003 token, Capricorn DSC
 You do **not** touch individual documents. Add an invisible anchor to
 the **Print Format template** once, sized to reserve the same space
 the stamp will actually take up (otherwise the stamp overlaps whatever
-content already sits there). The stamp's size comes directly from the
-anchor text itself - `:WxH` at the end - not from a separate field, so
-it can never drift out of sync with what the HTML actually reserves:
+content already sits there). Size lives entirely in the Print Format's
+HTML, not in the Anchor Text field on Digital Sign Print Template -
+that field can stay at its plain default (`##DIGITAL_SIGN_ANCHOR##`)
+for every template regardless of what size each one's HTML actually
+uses; nothing needs to be typed into two places to match:
 
 ```html
 <div style="display:inline-block; position:relative; width:160px; height:80px; margin:4px 0;">
@@ -61,7 +63,8 @@ that's up to 5 lines of text - the stamp font is 7pt specifically to
 keep that legible in a compact box, but it still needs real room; a
 smaller box will overflow and overlap surrounding content. Leaving off
 the `:WxH` suffix entirely (plain `##DIGITAL_SIGN_ANCHOR##`) falls back
-to 160x80 automatically.
+to 160x80 automatically - the signing code detects whichever variant is
+actually rendered on the page.
 
 **Keep the `div`'s own `width`/`height` matching the number in the
 anchor text exactly** - the `div` reserves the layout space so the

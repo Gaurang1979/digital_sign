@@ -184,47 +184,65 @@ def list_certificates(session) -> list:
 DEFAULT_STAMP_WIDTH = 160
 DEFAULT_STAMP_HEIGHT = 80
 
-_SIZE_PATTERN = re.compile(r":(\d+)x(\d+)")
-
-
-def _parse_stamp_size(anchor_text: str):
-	"""Size lives in the anchor text itself (e.g.
-	##DIGITAL_SIGN_ANCHOR:160x80##) - the single source of truth is
-	whatever's actually in the Print Format's HTML, not a separate field
-	that has to be kept in sync with it by hand. Falls back to a sane
-	default for anchors written without the :WxH suffix."""
-	m = _SIZE_PATTERN.search(anchor_text)
-	if m:
-		return int(m.group(1)), int(m.group(2))
-	return DEFAULT_STAMP_WIDTH, DEFAULT_STAMP_HEIGHT
-
 
 def locate_anchor(pdf_bytes: bytes, anchor_text: str):
 	"""Find anchor_text in the rendered PDF; return (page_index, x, y,
 	width, height) in PDF user-space points (origin bottom-left) for the
-	stamp's bottom-left corner and size."""
+	stamp's bottom-left corner and size.
+
+	Size is optional and lives ENTIRELY in the Print Format's own HTML -
+	nothing needs to be typed into anchor_text (the Digital Sign Print
+	Template field) to match. If the HTML's anchor carries a :WxH suffix
+	right before its closing ## (e.g. ##DIGITAL_SIGN_ANCHOR:200x100##),
+	that's detected directly from what's actually rendered on the page;
+	anchor_text itself can stay as the plain, unsized marker for every
+	template regardless of what size each one's HTML actually uses.
+	Falls back to a default size when no :WxH is present anywhere.
+	"""
 	import fitz  # PyMuPDF
 
-	width, height = _parse_stamp_size(anchor_text)
-
-	# PDF text extraction can introduce or collapse whitespace when the
-	# anchor sits inline next to other text rather than on its own line -
-	# try the exact string first, then a whitespace-normalised variant.
-	candidates = [anchor_text]
-	normalised = re.sub(r"\s+", " ", anchor_text).strip()
-	if normalised != anchor_text:
-		candidates.append(normalised)
+	anchor_text = anchor_text.strip()
+	if anchor_text.endswith("##"):
+		size_pattern = re.compile(re.escape(anchor_text[:-2]) + r"(?::(\d+)x(\d+))?" + re.escape("##"))
+	else:
+		size_pattern = re.compile(re.escape(anchor_text) + r"(?::(\d+)x(\d+))?")
 
 	pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
 	try:
 		for page_index in range(pdf.page_count):
 			page = pdf[page_index]
+
+			# Discover what's actually there (base marker, or base marker
+			# with a :WxH size embedded) via the page's extracted text -
+			# search_for() needs an exact string, and the whole point
+			# here is that we don't know the exact string (the size) in
+			# advance. PDF text extraction can introduce or collapse
+			# whitespace, so try both the raw and whitespace-normalised
+			# page text.
+			page_text = page.get_text()
+			m = size_pattern.search(page_text) or size_pattern.search(re.sub(r"\s+", " ", page_text))
+			if not m:
+				continue  # not on this page - try the next one
+
+			width = int(m.group(1)) if m.group(1) else DEFAULT_STAMP_WIDTH
+			height = int(m.group(2)) if m.group(2) else DEFAULT_STAMP_HEIGHT
+
+			# Now get this exact matched text's on-page position. Try it
+			# as found, then a whitespace-normalised variant, same
+			# reasoning as above but for search_for() specifically.
+			matched_text = m.group(0)
+			candidates = [matched_text]
+			normalised = re.sub(r"\s+", " ", matched_text).strip()
+			if normalised != matched_text:
+				candidates.append(normalised)
+
 			for candidate in candidates:
 				matches = page.search_for(candidate)
 				if matches:
 					rect = matches[0]
 					# fitz rects are top-down; flip to PDF bottom-up space.
 					return page_index, rect.x0, page.rect.height - rect.y1, width, height
+
 		raise SigningError(
 			f"Anchor text '{anchor_text}' was not found in the rendered print format. "
 			"Add it to the Print Format's HTML (see Digital Sign Document Config). "
