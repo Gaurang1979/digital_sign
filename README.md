@@ -52,37 +52,37 @@ for every template regardless of what size each one's HTML actually
 uses; nothing needs to be typed into two places to match:
 
 ```html
-<div style="display:inline-block; position:relative; width:160px; height:80px; margin:4px 0;">
-  <span style="color:#ffffff; position:absolute; left:0; top:0;">##DIGITAL_SIGN_ANCHOR:160x80##</span>
-</div>
+<div style="width:160px; height:40px; color:#ffffff; overflow:hidden;">##DIGITAL_SIGN_ANCHOR:160x40##</div>
 ```
 
-**Recommended minimum: 160x80.** With every stamp field enabled in
-Settings (signer name, reason, location, date, certificate serial),
-that's up to 5 lines of text - the stamp font is 7pt specifically to
-keep that legible in a compact box, but it still needs real room; a
-smaller box will overflow and overlap surrounding content. Leaving off
-the `:WxH` suffix entirely (plain `##DIGITAL_SIGN_ANCHOR##`) falls back
-to 160x80 automatically - the signing code detects whichever variant is
-actually rendered on the page.
+A plain block-level `div` with explicit width/height - no
+`position:absolute`, no `inline-block` - reliably reserves that much
+space in the page's normal layout flow, and the anchor text sits at
+its top-left by default with no extra positioning needed. (An earlier
+version of this guidance used `position:absolute`, which some PDF
+engines - wkhtmltopdf specifically - don't reliably reserve space for;
+if a stamp has overlapped or drifted to the wrong spot, switch to this
+plain `div` instead.)
+
+There's no hidden default forcing a particular height - `160x40` above
+is just an example. With every stamp field enabled in Settings (signer
+name, reason, location, date, certificate serial) that's up to 5 lines
+of text at 7pt, needing something like 70-80pt tall to stay legible;
+with fewer fields enabled, a shorter box works fine. Leaving off the
+`:WxH` suffix entirely (plain `##DIGITAL_SIGN_ANCHOR##`) falls back to
+160x80 automatically - the signing code detects whichever variant is
+actually rendered on the page, purely from the HTML, every time.
 
 **Keep the `div`'s own `width`/`height` matching the number in the
-anchor text exactly** - the `div` reserves the layout space so the
-stamp doesn't overlap surrounding content, and the anchor text tells
-the signing code how big to actually draw the stamp; if the two
-disagree, the stamp will be sized correctly but may not fit the space
-you reserved for it.
+anchor text exactly** - the `div` reserves the layout space, and the
+anchor text tells the signing code how big to actually draw the stamp;
+if the two disagree, the stamp will be sized correctly but may not fit
+the space you reserved for it.
 
 The stamp is drawn extending **downward-right** from exactly where the
-anchor *text* sits - not just anywhere inside the wrapper `div` - so
-`position:absolute; left:0; top:0;` matters: it pins the anchor to the
-box's own top-left corner, so the stamp fills downward into the
-reserved box instead of needing space reserved *above* the anchor
-(some PDF engines don't reliably reserve space above an anchor sitting
-right after a line of text, which caused overlap with earlier
-top:0-less or bottom:0-anchored HTML). The stamp content (text and the
-tick background) is centered both directions within that box
-automatically
+anchor text sits (its top-left corner), filling the box below and
+right of it. The stamp content (text and the tick background) is
+centered both directions within that box automatically
 - the small `margin` above adds a buffer so it never quite touches
 text directly above the box either.
 
