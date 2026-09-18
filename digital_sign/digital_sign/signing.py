@@ -295,6 +295,29 @@ def build_stamp_text(settings, reason: str, location: str, cert_info: dict) -> s
 	return "\n".join(lines) if lines else f"Digitally signed by: {settings.signer_name or ''}"
 
 
+def _fit_text_box_style(stamp_text: str, height: float) -> TextBoxStyle:
+	"""Scales font size/leading down so stamp_text always fits within
+	height, regardless of how many stamp fields (signer/reason/location/
+	date/certificate serial - configurable in Digital Sign Settings) end
+	up enabled. A fixed font size that happens to fit 5 lines in an 80pt
+	box will genuinely overflow a shorter box someone declares in their
+	HTML, or look unnecessarily cramped in a taller one with fewer
+	lines - this makes the box height in the HTML the actual, reliable
+	constraint instead of a fixed guess.
+
+	Bounded between 4pt (smallest still-legible size) and 8pt, so it
+	never gets absurdly large for a tall box with only one line either.
+	"""
+	num_lines = stamp_text.count("\n") + 1
+	# text_sep (pyHanko's own internal padding inside the box, default
+	# 10) eats into the usable height - leave room for it rather than
+	# assuming the full declared height is available for text lines.
+	available = max(height - 10, num_lines * 4)
+	leading = max(min(8, available / num_lines), 4)
+	font_size = max(leading - 1, 3)
+	return TextBoxStyle(font_size=font_size, leading=leading)
+
+
 def sign_pdf_bytes(
 	pdf_bytes: bytes,
 	signer,
@@ -346,15 +369,13 @@ def sign_pdf_bytes(
 		border_width=0,
 		background=PdfImage(tick_path) if os.path.exists(tick_path) else None,
 		background_opacity=background_opacity,
-		# Default font_size is 10, which with up to 5 lines enabled
-		# (signer/reason/location/date/certificate serial) needs ~60-70pt
-		# of height just for the text - overflows any reasonably compact
-		# stamp box and overlaps whatever sits above/below it in the print
-		# format. 7pt keeps all 5 lines legible while actually fitting
-		# a ~70-80pt-tall box. pyHanko vertically centers text within
-		# the box by default, so a tall-enough reserved HTML box centers
-		# the whole stamp automatically - no extra positioning needed.
-		text_box_style=TextBoxStyle(font_size=7, leading=8),
+		# Font size/leading dynamically scaled to guarantee stamp_text
+		# fits within height regardless of how many stamp fields are
+		# enabled - see _fit_text_box_style(). pyHanko vertically centers
+		# text within the box by default, so a tall-enough reserved HTML
+		# box centers the whole stamp automatically - no extra
+		# positioning needed.
+		text_box_style=_fit_text_box_style(stamp_text, height),
 		# Centers the inner text box (as a block) within the full stamp
 		# box horizontally and vertically - the box itself is exactly
 		# (width, height) from the anchor text, so this keeps the stamp
