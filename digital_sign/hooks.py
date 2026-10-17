@@ -42,4 +42,7 @@ override_whitelisted_methods = {
 	# direct API callers still use.
 	"frappe.utils.print_format.download_pdf": "digital_sign.digital_sign.api.download_pdf",
 	"frappe.www.printview.download_pdf": "digital_sign.digital_sign.api.download_pdf",
+	# Frappe v16+: the PDF button calls this instead for formats made in
+	# the new Print Format Builder (Chrome-rendered).
+	"frappe.utils.print_format_generator.download_pdf": "digital_sign.digital_sign.api.download_builder_pdf",
 }

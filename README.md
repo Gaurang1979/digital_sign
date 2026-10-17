@@ -93,6 +93,14 @@ text layer too — the anchor becomes genuinely unfindable, not just
 invisible. `color` matching keeps the text actually painted (findable)
 while still being invisible to the eye.
 
+**New Print Format Builder (ERPNext/Frappe v16+).** Formats made in
+the new builder render through Chrome, not wkhtmltopdf. Drag an
+**HTML** block where the stamp should go and put the same anchor in it
+(`<div style="color:#ffffff">##DIGITAL_SIGN_ANCHOR:160x60##</div>`),
+with a Spacer block above and below for room. The app signs the PDF
+from the format's own engine, so the stamp lands where Print / PDF
+shows it.
+
 At sign time the app renders the PDF, finds that text, and places the
 stamp's bottom-left corner there, sized per the template row's config.
 Since a Print Format is shared by every document of that type, one

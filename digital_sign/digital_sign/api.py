@@ -3,7 +3,6 @@ import inspect
 
 import frappe
 from frappe import _
-from frappe.utils.pdf import get_pdf
 
 from digital_sign.digital_sign.boot import get_config
 from digital_sign.digital_sign.signing import (
@@ -117,7 +116,15 @@ def _render_pdf_isolated(doctype, docname, print_format):
 	original_form_dict = frappe.local.form_dict
 	frappe.local.form_dict = frappe._dict({"doctype": doctype, "name": docname, "format": print_format})
 	try:
-		return get_pdf(frappe.get_print(doctype, docname, print_format=print_format))
+		# as_pdf=True, not get_pdf(get_print(...)): from Frappe v16 each Print
+		# Format picks its own engine (wkhtmltopdf, chrome, Typst, WeasyPrint)
+		# and formats made in the new Print Format Builder always render
+		# through Chrome. get_pdf() is always wkhtmltopdf, so the old call
+		# signed a different PDF from the one Print / PDF shows - for a new
+		# builder format, one without the anchor or with it elsewhere.
+		# get_print() resolves the format's own engine, the same way the
+		# PDF button does.
+		return frappe.get_print(doctype, docname, print_format=print_format, as_pdf=True)
 	finally:
 		frappe.local.form_dict = original_form_dict
 
@@ -282,6 +289,19 @@ def revoke_signature(doctype, docname, reason=None):
 	return {"ok": True, "log": log.name}
 
 
+def _serve_signed_pdf(doctype, name):
+	"""Put the signed PDF in the response if the document is currently
+	signed. Returns True when it did, so the caller skips its own render."""
+	log = _latest_log(doctype, name)
+	if not (log and log.status == "Success" and log.signed_file):
+		return False
+
+	frappe.local.response.filename = f"{name}-signed.pdf"
+	frappe.local.response.filecontent = base64.b64decode(log.signed_file)
+	frappe.local.response.type = "download"
+	return True
+
+
 @frappe.whitelist()
 def download_pdf(doctype, name, format=None, doc=None, no_letterhead=0, letterhead=None, language=None, **kwargs):
 	"""Override for the "Download PDF" whitelisted call: serve the signed
@@ -299,12 +319,7 @@ def download_pdf(doctype, name, format=None, doc=None, no_letterhead=0, letterhe
 	  >>> import inspect, frappe.utils.print_format as pf
 	  >>> inspect.signature(pf.download_pdf)
 	"""
-	log = _latest_log(doctype, name)
-
-	if log and log.status == "Success" and log.signed_file:
-		frappe.local.response.filename = f"{name}-signed.pdf"
-		frappe.local.response.filecontent = base64.b64decode(log.signed_file)
-		frappe.local.response.type = "download"
+	if _serve_signed_pdf(doctype, name):
 		return
 
 	try:
@@ -408,3 +423,29 @@ def check_anchor_for_config(document_type, print_format, anchor_text):
 			"Couldn't render {0} with Print Format {1} to test the anchor (tried {2} document(s)) - {3}"
 		).format(document_type, print_format, len(sample_names), str(last_render_error)),
 	}
+
+
+@frappe.whitelist()
+def download_builder_pdf(doctype, name, print_format=None, letterhead=None, settings=None, **kwargs):
+	"""Override for frappe.utils.print_format_generator.download_pdf - the
+	call the Print page's PDF button makes, from Frappe v16, for formats
+	made in the new Print Format Builder (rendered by Chrome). Without
+	this, those formats always got a fresh unsigned render even after
+	signing, because download_pdf above is never called for them."""
+	if _serve_signed_pdf(doctype, name):
+		return
+
+	from frappe.utils.print_format_generator import download_pdf as original_download_pdf
+
+	all_args = {
+		"doctype": doctype,
+		"name": name,
+		"print_format": print_format,
+		"letterhead": letterhead,
+		"settings": settings,
+		**kwargs,
+	}
+	accepted_params = set(inspect.signature(original_download_pdf).parameters)
+	call_args = {k: v for k, v in all_args.items() if k in accepted_params}
+
+	return original_download_pdf(**call_args)
