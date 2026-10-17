@@ -352,6 +352,36 @@ def download_pdf(doctype, name, format=None, doc=None, no_letterhead=0, letterhe
 	return original_download_pdf(**call_args)
 
 
+def _anchor_check_samples(document_type, per_kind=3):
+	"""Recently submitted documents to test a Print Format against.
+
+	A Credit Note or Debit Note format reads the original invoice
+	(frappe.get_doc(..., doc.return_against)) and crashes with "Sales
+	Invoice None not found" on an ordinary invoice, while an ordinary
+	invoice's format may not suit a return. The newest documents are
+	usually ordinary ones, so for doctypes with returns the samples
+	include the newest ordinary ones, returns and debit notes, so each
+	kind of format has a document it can render."""
+	meta = frappe.get_meta(document_type)
+	kinds = [{}]
+	if meta.has_field("is_return"):
+		kinds = [{"is_return": 0}, {"is_return": 1}]
+		if meta.has_field("is_debit_note"):
+			kinds = [{"is_return": 0, "is_debit_note": 0}, {"is_return": 1}, {"is_debit_note": 1}]
+	names = []
+	for kind in kinds:
+		for name in frappe.get_all(
+			document_type,
+			filters={"docstatus": 1, **kind},
+			pluck="name",
+			order_by="modified desc",
+			limit=per_kind,
+		):
+			if name not in names:
+				names.append(name)
+	return names
+
+
 @frappe.whitelist()
 def check_anchor_for_config(document_type, print_format, anchor_text):
 	"""Used by Digital Sign Document Config's own pre-save validation
@@ -359,20 +389,16 @@ def check_anchor_for_config(document_type, print_format, anchor_text):
 	recently submitted document of this type, since a config row isn't
 	tied to any one document itself.
 
-	Tries a few candidate documents, not just the single most recent one:
-	some print formats reference a related document (e.g. Return Against,
-	Amended From) without checking whether it's actually set, and crash
-	while rendering for any sample where that happens to be blank - that's
-	a pre-existing fragility in the print format itself, not something
-	this check should hard-fail the whole config save over.
+	Tries a few candidate documents, not just the single most recent one,
+	including returns and debit notes where the doctype has them
+	(_anchor_check_samples): some print formats reference a related
+	document (e.g. Return Against, Amended From) without checking whether
+	it's actually set, and crash while rendering for any sample where that
+	happens to be blank - that's a pre-existing fragility in the print
+	format itself, not something this check should hard-fail the whole
+	config save over.
 	"""
-	sample_names = frappe.get_all(
-		document_type,
-		filters={"docstatus": 1},
-		pluck="name",
-		order_by="modified desc",
-		limit=3,
-	)
+	sample_names = _anchor_check_samples(document_type)
 	if not sample_names:
 		return {"checked": False, "message": _("No submitted {0} exists yet to test against.").format(document_type)}
 
