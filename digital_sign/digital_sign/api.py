@@ -114,7 +114,14 @@ def _render_pdf_isolated(doctype, docname, print_format):
 	document regardless of what triggered it - cheap enough to do on
 	every render, not just the ones known to hit this."""
 	original_form_dict = frappe.local.form_dict
-	frappe.local.form_dict = frappe._dict({"doctype": doctype, "name": docname, "format": print_format})
+	frappe.local.form_dict = frappe._dict(
+		{
+			"doctype": doctype,
+			"name": docname,
+			"format": print_format,
+			"pdf_generator": _pdf_generator_for(print_format),
+		}
+	)
 	try:
 		# as_pdf=True, not get_pdf(get_print(...)): from Frappe v16 each Print
 		# Format picks its own engine (wkhtmltopdf, chrome, Typst, WeasyPrint)
@@ -127,6 +134,21 @@ def _render_pdf_isolated(doctype, docname, print_format):
 		return frappe.get_print(doctype, docname, print_format=print_format, as_pdf=True)
 	finally:
 		frappe.local.form_dict = original_form_dict
+
+
+def _pdf_generator_for(print_format):
+	"""The engine the Print page's PDF button would use: the Print
+	Format's own PDF Generator, else the one in Print Settings, else
+	wkhtmltopdf (print.js get_pdf_generator). Frappe's server-side
+	get_print() skips the Print Settings step, so a format whose own
+	field is blank - common, it has no default - got wkhtmltopdf here
+	while the button used Chrome: broken flex layouts and a fixed
+	footer painted over page 1 in the signed copy only. Builder formats
+	are pinned to their own engine by get_print() whatever this says."""
+	generator = None
+	if print_format and print_format != "Standard":
+		generator = frappe.db.get_value("Print Format", print_format, "pdf_generator")
+	return generator or frappe.db.get_single_value("Print Settings", "pdf_generator") or "wkhtmltopdf"
 
 
 def _render_pdf(doctype, docname, template):
